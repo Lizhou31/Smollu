@@ -11,12 +11,17 @@ This project aims to build a small script language for my own use and learning.
 - [ ] Support for basic function operations
 - [ ] Support for basic loop operations
 - [ ] Support for basic conditional operations
-- [ ] Support for system calls register and call
+- [ ] Support for system calls
 
 ## Support platform
 
 - [ ] PC (Windows, Linux, MacOS)
 - [ ] Zephyr RTOS
+
+## Doc
+
+- [ ] [Language Spec](doc/Language Spec.md)
+- [ ] [Instruction Set](doc/Instruction Set.md)
 
 ## Project structure
 
