@@ -12,6 +12,8 @@
 | **Whitespace**      | Spaces, tabs, newlines separate tokens. |                            |
 
 ## 2. Porgram structure
+
+* TODO
 ```BNF
 <block>    ::= "{" <top_stat> "}"
 <top_stat>  ::= <func_def> | <assign_stat> | <native_decl>
@@ -47,10 +49,17 @@ end
 
 * Any invalid type combination rases a runtime "type-mismatch" error and halts execution
 
-## 4. Assignments & Operators
+## 4. Statements
+```BNF
+<init_stat>  ::= "init {" (<func_def> | <assign_stat> | <native_decl>)+ "}"
+
+<main_stat> ::= "main {" (<assign_stat> | <if_stat> | <while_stat> | <native_call> | <func_call>)+ "}"
+```
+
+### 4.1 Assignment & Arithmetic
 ```BNF
 <assign_stat> ::= "local "? <identifier> "=" <expr> ";"
-<expr> ::= <m_exp> | <b_exp>
+<expr> ::= <m_exp> | <b_exp> | <func_call> | <native_call>
 
 <m_exp> ::= (<integer> | <float>) 
  | "(" <m_exp> ")" 
@@ -71,13 +80,32 @@ end
 <cmp_op> ::= ">" | ">=" | "<" | "<="
 ```
 
+#### 4.1.1 Assignment
 * local declares / binds an identifier to a function‑local slot (0‑255).
 
 * When local is omitted, the assignment targets a global slot; the variable is auto‑created on first write.
 
-### Example
+##### Example
 ```lua
 local x = 5   -- local
 y = 3.14      -- global
 ```
 
+#### 4.1.2 Arithmetic
+* Operator precedence (highest -> lowest, all left-associative)
+    1. ```*```, ```/```, ```%``` - multiplication, division, modulus
+    2. ```+```, ```-``` - addition, subtraction
+    3. ```<```, ```<=```, ```>```, ```>=``` - comparison
+    4. ```==```, ```!=``` - equality
+    5. ```&&``` - logical AND
+    6. ```||``` - logical OR
+* Unary (prefix, highest precedence)
+    * ```!``` - logical NOT
+    * ```-``` - negation
+* Arithmetic operations promote int -> float
+
+### 4.2 Control flow
+#### 4.2.1 While
+```BNF
+
+```
