@@ -12,11 +12,8 @@
 | **Whitespace**      | Spaces, tabs, newlines separate tokens. |                            |
 
 ## 2. Porgram structure
-
-* TODO
 ```BNF
-<block>    ::= "{" <top_stat> "}"
-<top_stat>  ::= <func_def> | <assign_stat> | <native_decl>
+<program> ::= <init_stat>  <main_stat>
 ```
 * function-IDs 0-254 (255 reserved)
 
@@ -118,4 +115,15 @@ while (x < 10) {
     x = x + 1 ;
 }
 ```
+#### 4.2.2 If
+```BNF
+<if_stat> ::= "if(" <b_exp> "){" <statement> "}" ("else if(" <b_exp> "){" <statement> "}")+ ("else{" <statement> "}")+
+```
+##### Example
+```lua
+if (x < 10) {
+    x = x + 1 ;
+}
+```
+
 
