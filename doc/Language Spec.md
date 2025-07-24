@@ -53,7 +53,10 @@ end
 ```BNF
 <init_stat>  ::= "init {" (<func_def> | <assign_stat> | <native_decl>)+ "}"
 
-<main_stat> ::= "main {" (<assign_stat> | <if_stat> | <while_stat> | <native_call> | <func_call>)+ "}"
+<main_stat> ::= "main {" <statement>+ "}"
+
+<statement> ::= <assign_stat> | <if_stat> | <while_stat> | <native_call> | <func_call>
+
 ```
 
 ### 4.1 Assignment & Arithmetic
@@ -107,5 +110,12 @@ y = 3.14      -- global
 ### 4.2 Control flow
 #### 4.2.1 While
 ```BNF
-
+<while_stat> ::= "while (" <b_exp> ")" "{" <statement>+ "}"
 ```
+##### Example
+```lua
+while (x < 10) {
+    x = x + 1 ;
+}
+```
+
