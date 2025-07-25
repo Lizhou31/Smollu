@@ -109,6 +109,82 @@ const char *token_type_name(TokenType t);
 /* Free memory owned by a token (its lexeme). */
 void  token_free(Token *tok);
 
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  AST definitions                                                            */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+typedef enum {
+    AST_PROGRAM,
+    AST_BLOCK,
+    AST_INT_LITERAL,
+    AST_FLOAT_LITERAL,
+    AST_BOOL_LITERAL,
+    AST_NIL_LITERAL,
+    AST_IDENTIFIER,
+    AST_BINARY,
+    AST_UNARY,
+    AST_ASSIGNMENT,
+    AST_WHILE
+} NodeType;
+
+typedef struct ASTNode ASTNode;
+struct ASTNode {
+    NodeType type;
+    int      line;
+    int      column;
+    ASTNode *next; /* linked-list for sequential nodes (e.g., statements) */
+    union {
+        /* Literal values */
+        int   int_val;
+        float float_val;
+        int   bool_val;
+        char *identifier; /* malloc'd */
+
+        struct {               /* Unary expression */
+            TokenType op;      /* operator token type */
+            ASTNode  *expr;    /* operand */
+        } unary;
+        struct {               /* Binary expression */
+            TokenType op;      /* operator token type */
+            ASTNode  *left;
+            ASTNode  *right;
+        } binary;
+        struct {               /* Assignment */
+            char    *name;     /* identifier */
+            int      is_local; /* boolean */
+            ASTNode *value;    /* expression */
+        } assign;
+        struct {               /* While statement */
+            ASTNode *condition;
+            ASTNode *body;     /* AST_BLOCK */
+        } while_stmt;
+        struct {               /* Block / Program */
+            ASTNode *stmts;    /* linked-list of statements */
+        } block;
+    } as;
+};
+
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  Parser interface                                                           */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+typedef struct Parser {
+    Lexer *lex;      /* external lexer provided by the caller */
+    Token  current;  /* current lookahead token */
+} Parser;
+
+/* Initialize parser with an already configured lexer */
+void     parser_init(Parser *p, Lexer *lex);
+
+/* Free resources held by parser (including current token) */
+void     parser_free(Parser *p);
+
+/* Parse an entire program and return its AST root (AST_PROGRAM). */
+ASTNode *parse_program(Parser *p);
+
+/* Recursively free an AST tree. */
+void     ast_free(ASTNode *node);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
