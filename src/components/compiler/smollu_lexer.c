@@ -221,7 +221,7 @@ static Token scan_number(Lexer *l) {
         lex_advance(l);
     }
     int is_float = 0;
-    if (lex_peek(l) == '.' && isdigit(lex_peek_next(l))) {
+    if (lex_peek(l) == '.') {
         is_float = 1;
         lex_advance(l); /* consume '.' */
         while (isdigit(lex_peek(l))) {

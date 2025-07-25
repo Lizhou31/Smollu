@@ -38,6 +38,7 @@ Test(lexer, literals) {
     const char *source =
         "local x = -42; "
         "local y = 3.14; "
+        "z = 1.;"
         "local t = true; "
         "local f = false; "
         "local n = nil;";
@@ -58,6 +59,14 @@ Test(lexer, literals) {
     tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL);                                token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_FLOAT_LITERAL);
     cr_assert_float_eq(tok.value.float_val, 3.14f, 1e-3);
+    token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+
+    /* z = 1.; */
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "z"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_FLOAT_LITERAL);
+    cr_assert_float_eq(tok.value.float_val, 1.0f, 1e-3);
     token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
 
