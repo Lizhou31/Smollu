@@ -26,6 +26,14 @@ target_include_directories(smollu_parser PUBLIC
 # Link lexer into parser
 target_link_libraries(smollu_parser PUBLIC smollu_lexer)
 
+add_executable(smollu_compiler
+    src/components/compiler/smollu_compiler.c
+)
+target_include_directories(smollu_compiler PUBLIC
+    src/components/compiler
+)
+target_link_libraries(smollu_compiler PUBLIC smollu_parser smollu_lexer)
+
 # ---------------------------------------------------------------------------
 #  Tests (Criterion)
 # ---------------------------------------------------------------------------

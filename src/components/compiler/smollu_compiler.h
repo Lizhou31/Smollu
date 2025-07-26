@@ -211,4 +211,9 @@ void     ast_free(ASTNode *node);
 } /* extern "C" */
 #endif
 
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  Public Compiler API                                                        */
+/* ──────────────────────────────────────────────────────────────────────────── */
+int smollu_compile(FILE *in, FILE *out);
+
 #endif /* SMOLLU_COMPILER_H */
