@@ -1,5 +1,15 @@
-// smollu_parser.c - Recursive-descent parser building an AST for Smollu
-// Depends on the lexer defined in smollu_lexer.c and public API in smollu_compiler.h
+/**
+ * @file smollu_parser.c
+ * @author Lizhou (lisie31s@gmail.com)
+ * @brief Recursive-descent parser building an AST for Smollu.
+ * Depends on the lexer defined in smollu_lexer.c and public API in smollu_compiler.h
+ * 
+ * @version 0.1
+ * @date 2025-07-26
+ * 
+ * @copyright Copyright (c) 2025 Lizhou
+ * 
+ */
 
 #include <stdio.h>
 #include <stdlib.h>

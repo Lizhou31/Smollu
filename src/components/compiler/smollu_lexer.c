@@ -1,7 +1,14 @@
-// smollu_lexer.c - Lexer for the Smollu language as defined in "Language Spec.md"
-// The implementation is intentionally self-contained in this single file so it can be
-// dropped into any project without extra headers. Simply include this file in your
-// build and call the API documented at the bottom.
+/**
+ * @file smollu_lexer.c
+ * @author Lizhou (lisie31s@gmail.com)
+ * @brief Lexer for the Smollu language as defined in "Language Spec.md"
+ * 
+ * @version 0.1
+ * @date 2025-07-26
+ * 
+ * @copyright Copyright (c) 2025 Lizhou
+ * 
+ */
 
 #include <ctype.h>
 #include <stdio.h>
@@ -9,97 +16,6 @@
 #include <string.h>
 
 #include "smollu_compiler.h"
-
-#ifndef SMOLLU_COMPILER_H  /* duplicate definitions kept for historical reference, skipped when header included */
-/* ──────────────────────────────────────────────────────────────────────────── */
-/*  Public types                                                               */
-/* ──────────────────────────────────────────────────────────────────────────── */
-
-typedef enum {
-    /* Special */
-    TOK_EOF = 0,
-    TOK_UNKNOWN,
-
-    /* Literals */
-    TOK_IDENTIFIER,
-    TOK_INT_LITERAL,
-    TOK_FLOAT_LITERAL,
-    TOK_BOOL_LITERAL, /* true / false */
-    TOK_NIL_LITERAL,  /* nil */
-
-    /* Keywords */
-    TOK_KW_NATIVE,
-    TOK_KW_FUNCTION,
-    TOK_KW_INIT,
-    TOK_KW_MAIN,
-    TOK_KW_LOCAL,
-    TOK_KW_WHILE,
-    TOK_KW_IF,
-    TOK_KW_ELSE,
-
-    /* Operators */
-    TOK_PLUS,          // +
-    TOK_MINUS,         // -
-    TOK_STAR,          // *
-    TOK_SLASH,         // /
-    TOK_PERCENT,       // %
-
-    TOK_EQUAL,         // =
-    TOK_EQUAL_EQUAL,   // ==
-    TOK_BANG,          // !
-    TOK_BANG_EQUAL,    // !=
-
-    TOK_GREATER,       // >
-    TOK_GREATER_EQUAL, // >=
-    TOK_LESS,          // <
-    TOK_LESS_EQUAL,    // <=
-
-    TOK_AND_AND,       // &&
-    TOK_OR_OR,         // ||
-
-    /* Delimiters */
-    TOK_LPAREN,        // (
-    TOK_RPAREN,        // )
-    TOK_LBRACE,        // {
-    TOK_RBRACE,        // }
-    TOK_COMMA,         // ,
-    TOK_SEMICOLON,     // ;
-} TokenType;
-
-typedef struct {
-    TokenType type;
-    char      *lexeme;  /* malloc'd, null-terminated string representing the token text */
-    int        line;    /* 1-based line number */
-    int        column;  /* 1-based column number (character offset in line) */
-    union {
-        int   int_val;
-        float float_val;
-        int   bool_val; /* 0 = false, 1 = true */
-    } value;
-} Token;
-
-/* Forward declare the main API */
-struct Lexer;
-typedef struct Lexer Lexer;
-
-void         lexer_init(Lexer *lex, const char *source_code);
-void         lexer_free(Lexer *lex);
-Token        lexer_next(Lexer *lex);
-const char * token_type_name(TokenType t);
-void         token_free(Token *tok);
-
-/* ──────────────────────────────────────────────────────────────────────────── */
-/*  Internal lexer implementation                                              */
-/* ──────────────────────────────────────────────────────────────────────────── */
-
-struct Lexer {
-    const char *src;     /* original source code (null-terminated) */
-    size_t      pos;     /* byte offset into src */
-    size_t      length;  /* cached strlen(src) */
-    int         line;    /* 1-based current line */
-    int         column;  /* 1-based current column */
-};
-#endif /* SMOLLU_COMPILER_H */
 
 static inline int lex_peek(Lexer *l) {
     return l->pos < l->length ? l->src[l->pos] : EOF;
