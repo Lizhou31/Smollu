@@ -169,7 +169,11 @@ struct ASTNode {
             ASTNode *condition;
             ASTNode *body;     /* AST_BLOCK */
         } while_stmt;
-        struct {               /* Block / Program */
+        struct {
+            ASTNode *init;     /* AST_BLOCK */
+            ASTNode *main;     /* AST_BLOCK */
+        } program;
+        struct {               /* Block */
             ASTNode *stmts;    /* linked-list of statements */
         } block;
     } as;

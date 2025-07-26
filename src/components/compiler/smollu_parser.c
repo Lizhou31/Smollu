@@ -293,14 +293,44 @@ static ASTNode *parse_block(Parser *p) {
 }
 
 /* ─────────────────── Program ------------------------------------------------ */
-ASTNode *parse_program(Parser *p) {
+static ASTNode *parse_init(Parser *p) {
+    parser_expect(p, TOK_LBRACE, "{");
     ASTNode *stmts = NULL;
-    while (!parser_check(p, TOK_EOF)) {
+    while (!parser_check(p, TOK_RBRACE)) {
         ASTNode *s = parse_statement(p);
         stmts = append_statement(stmts, s);
     }
+    parser_expect(p, TOK_RBRACE, "}");
+    ASTNode *init = new_node(AST_BLOCK, 1, 1);
+    init->as.block.stmts = stmts;
+    return init;
+}
+
+static ASTNode *parse_main(Parser *p) {
+    parser_expect(p, TOK_LBRACE, "{");
+    ASTNode *stmts = NULL;
+    while (!parser_check(p, TOK_RBRACE)) {
+        ASTNode *s = parse_statement(p);
+        stmts = append_statement(stmts, s);
+    }
+    parser_expect(p, TOK_RBRACE, "}");
+    ASTNode *main = new_node(AST_BLOCK, 1, 1);
+    main->as.block.stmts = stmts;
+    return main;
+}
+
+ASTNode *parse_program(Parser *p) {
+    ASTNode *stmts = NULL;
+    parser_expect(p, TOK_KW_INIT, "init");
+    ASTNode *init = parse_init(p);
+
+    stmts = NULL;
+    parser_expect(p, TOK_KW_MAIN, "main");
+    ASTNode *main = parse_main(p);
+
     ASTNode *root = new_node(AST_PROGRAM, 1, 1);
-    root->as.block.stmts = stmts;
+    root->as.program.init = init;
+    root->as.program.main = main;
     return root;
 }
 
@@ -342,15 +372,19 @@ void ast_free(ASTNode *node) {
             ast_free(node->as.while_stmt.body);
             break;
         case AST_BLOCK:
-        case AST_PROGRAM: {
-            ASTNode *cur = node->as.block.stmts;
-            while (cur) {
-                ASTNode *next = cur->next;
-                ast_free(cur);
-                cur = next;
+            while (node->as.block.stmts) {
+                ASTNode *next = node->as.block.stmts->next;
+                ast_free(node->as.block.stmts);
+                node->as.block.stmts = next;
             }
             break;
+        case AST_PROGRAM: {
+            ast_free(node->as.program.init);
+            ast_free(node->as.program.main);
+            break;
         }
+        default:
+            break;
     }
     free(node);
 }
@@ -400,6 +434,9 @@ static void print_ast(ASTNode *n, int depth) {
     /* Print children */
     switch (n->type) {
         case AST_PROGRAM:
+            print_ast(n->as.program.init, depth + 1);
+            print_ast(n->as.program.main, depth + 1);
+            break;
         case AST_BLOCK: {
             ASTNode *cur = n->as.block.stmts;
             while (cur) {
@@ -431,9 +468,13 @@ static void print_ast(ASTNode *n, int depth) {
 }
 int main(void) {
     const char *code =
-        "local x = 1;\n"
-        "local y = 2.1;\n"
-        "while (x < 10) { x = x + 1; }\n";
+        "init {\n"
+        "  local x = 1;\n"
+        "  local y = 2.1;\n"
+        "}\n"
+        "main {\n"
+        "  while (x < 10) { x = x + 1; }\n"
+        "}\n";
 
     Parser parser;
     Lexer lexer;
