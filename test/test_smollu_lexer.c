@@ -15,7 +15,13 @@ static void expect_lexeme(Token tok, const char *expected) {
 }
 
 Test(lexer, basic_syntax) {
-    const char *source = "init { native foo(a, b) }";
+    const char *source = "init { native foo(a, b) }\n"
+                         "main { \n"
+                         "foo(1, 2);\n"
+                         "while (x < 10) { x = x + 1; }\n"
+                         "if (x == 10) { x = x + 1; } else { x = x + 1; }\n"
+                         "}";
+                         
     Lexer lex; lexer_init(&lex, source);
     Token tok;
 
@@ -29,6 +35,57 @@ Test(lexer, basic_syntax) {
     tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "b");  token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_RPAREN);                               token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);                               token_free(&tok);
+
+    tok = lexer_next(&lex); expect_type(tok, TOK_KW_MAIN);  expect_lexeme(tok, "main"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LBRACE);                               token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "foo"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LPAREN);                               token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 1); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_COMMA);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 2); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RPAREN);                               token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+
+    tok = lexer_next(&lex); expect_type(tok, TOK_KW_WHILE);                            token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LPAREN);                               token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LESS);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 10); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RPAREN);                               token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LBRACE);                               token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_PLUS);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 1); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);                               token_free(&tok);
+    
+    tok = lexer_next(&lex); expect_type(tok, TOK_KW_IF);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LPAREN);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL_EQUAL);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 10); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RPAREN);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LBRACE);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_PLUS);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 1); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);
+
+    tok = lexer_next(&lex); expect_type(tok, TOK_KW_ELSE);
+    tok = lexer_next(&lex); expect_type(tok, TOK_LBRACE);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "x"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_PLUS);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 1); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);
+    tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);
     tok = lexer_next(&lex); expect_type(tok, TOK_EOF);                                  token_free(&tok);
 
     lexer_free(&lex);
@@ -39,6 +96,7 @@ Test(lexer, literals) {
         "local x = -42; "
         "local y = 3.14; "
         "z = 1.;"
+        "a = 45;"
         "local t = true; "
         "local f = false; "
         "local n = nil;";
@@ -68,6 +126,12 @@ Test(lexer, literals) {
     tok = lexer_next(&lex); expect_type(tok, TOK_FLOAT_LITERAL);
     cr_assert_float_eq(tok.value.float_val, 1.0f, 1e-3);
     token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+
+    /* a = 45; */
+    tok = lexer_next(&lex); expect_type(tok, TOK_IDENTIFIER); expect_lexeme(tok, "a"); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_EQUAL);                                token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 45); token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
 
     /* local t = true; */
