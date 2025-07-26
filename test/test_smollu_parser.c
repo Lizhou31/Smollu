@@ -104,3 +104,65 @@ Test(parser, while_and_assignment) {
     parser_free(&p);
     lexer_free(&lex);
 } 
+
+Test(parser, if_elif_else) {
+    const char *code =
+        "init {}\n"
+        "main {\n"
+        "  if (x < 3) { x = x + 1; }\n"
+        "  elif (x < 6) { x = x + 2; }\n"
+        "  else { x = x - 1; }\n"
+        "}";
+
+    Lexer lex; lexer_init(&lex, code);
+    Parser p; parser_init(&p, &lex);
+
+    ASTNode *root = parse_program(&p);
+
+    ASTNode *if_stmt = main_first_stmt(root);
+    expect_node_type(if_stmt, AST_IF, "if statement");
+
+    /* Check condition: x < 3 */
+    ASTNode *cond = if_stmt->as.if_stmt.condition;
+    expect_node_type(cond, AST_BINARY, "if condition");
+    cr_assert_eq(cond->as.binary.op, TOK_LESS);
+
+    /* Check then body exists */
+    ASTNode *then_body = if_stmt->as.if_stmt.then_body;
+    expect_node_type(then_body, AST_BLOCK, "then body");
+
+    /* Check else body is another if (elif) */
+    ASTNode *else_body = if_stmt->as.if_stmt.else_body;
+    expect_node_type(else_body, AST_IF, "elif as nested if");
+
+    /* Check nested if condition: x < 6 */
+    ASTNode *nested_cond = else_body->as.if_stmt.condition;
+    expect_node_type(nested_cond, AST_BINARY, "nested if condition");
+    cr_assert_eq(nested_cond->as.binary.op, TOK_LESS);
+
+    /* Check nested if then body exists */
+    ASTNode *nested_then_body = else_body->as.if_stmt.then_body;
+    expect_node_type(nested_then_body, AST_BLOCK, "nested if then body");
+    ASTNode *nested_then_body_stmt = nested_then_body->as.block.stmts;
+    expect_node_type(nested_then_body_stmt, AST_ASSIGNMENT, "nested if then body assignment");
+    cr_assert_str_eq(nested_then_body_stmt->as.assign.name, "x");
+
+    /* Check nested if else body exists */
+    ASTNode *nested_else_body = else_body->as.if_stmt.else_body;
+    expect_node_type(nested_else_body, AST_BLOCK, "nested if else body");
+    ASTNode *nested_else_body_stmt = nested_else_body->as.block.stmts;
+    expect_node_type(nested_else_body_stmt, AST_ASSIGNMENT, "nested if else body assignment");
+    cr_assert_str_eq(nested_else_body_stmt->as.assign.name, "x");
+
+    /* Check else body is else block */
+    ASTNode *else_body_stmt = else_body->as.if_stmt.else_body;
+    expect_node_type(else_body_stmt, AST_BLOCK, "else body");
+    ASTNode *else_body_stmt_stmt = else_body_stmt->as.block.stmts;
+    expect_node_type(else_body_stmt_stmt, AST_ASSIGNMENT, "else body assignment");
+    cr_assert_str_eq(else_body_stmt_stmt->as.assign.name, "x");
+
+    /* Cleanup */
+    ast_free(root);
+    parser_free(&p);
+    lexer_free(&lex);
+} 

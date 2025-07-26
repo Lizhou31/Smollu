@@ -117,7 +117,7 @@ while (x < 10) {
 ```
 #### 4.2.2 If
 ```BNF
-<if_stat> ::= "if(" <b_exp> "){" <statement> "}" ("else if(" <b_exp> "){" <statement> "}")+ ("else{" <statement> "}")+
+<if_stat> ::= "if(" <b_exp> "){" <statement> "}" ("elif(" <b_exp> "){" <statement> "}")+ ("else{" <statement> "}")?
 ```
 ##### Example
 ```lua

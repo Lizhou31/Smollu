@@ -222,6 +222,28 @@ static ASTNode *parse_while(Parser *p) {
     return n;
 }
 
+static ASTNode *parse_if(Parser *p) {
+    Token tok = p->current; /* TOK_IF */
+    parser_advance(p);
+    parser_expect(p, TOK_LPAREN, "(");
+    ASTNode *cond = parse_expression(p);
+    parser_expect(p, TOK_RPAREN, ")");
+    ASTNode *then_body = parse_block(p);
+    ASTNode *else_body = NULL;
+    if(parser_check(p, TOK_KW_ELIF)) {
+        else_body = parse_if(p);
+    } else if (parser_check(p, TOK_KW_ELSE)) {
+        parser_advance(p);
+        else_body = parse_block(p);
+    }
+
+    ASTNode *n = new_node(AST_IF, tok.line, tok.column);
+    n->as.if_stmt.condition = cond;
+    n->as.if_stmt.then_body = then_body;
+    n->as.if_stmt.else_body = else_body;
+    return n;
+}
+
 static ASTNode *parse_assignment(Parser *p, int is_local) {
     Token ident_tok = p->current; /* identifier */
     char *name = strdup(ident_tok.lexeme);
@@ -240,6 +262,9 @@ static ASTNode *parse_assignment(Parser *p, int is_local) {
 static ASTNode *parse_statement(Parser *p) {
     if (parser_check(p, TOK_KW_WHILE)) {
         return parse_while(p);
+    }
+    if (parser_check(p, TOK_KW_IF)) {
+        return parse_if(p);
     }
     if (parser_check(p, TOK_KW_LOCAL)) {
         parser_advance(p);
@@ -371,6 +396,11 @@ void ast_free(ASTNode *node) {
             ast_free(node->as.while_stmt.condition);
             ast_free(node->as.while_stmt.body);
             break;
+        case AST_IF:
+            ast_free(node->as.if_stmt.condition);
+            ast_free(node->as.if_stmt.then_body);
+            ast_free(node->as.if_stmt.else_body);
+            break;
         case AST_BLOCK:
             while (node->as.block.stmts) {
                 ASTNode *next = node->as.block.stmts->next;
@@ -430,6 +460,9 @@ static void print_ast(ASTNode *n, int depth) {
         case AST_WHILE:
             printf("While\n");
             break;
+        case AST_IF:
+            printf("If\n");
+            break;
     }
     /* Print children */
     switch (n->type) {
@@ -459,6 +492,11 @@ static void print_ast(ASTNode *n, int depth) {
             print_ast(n->as.while_stmt.condition, depth + 1);
             print_ast(n->as.while_stmt.body, depth + 1);
             break;
+        case AST_IF:
+            print_ast(n->as.if_stmt.condition, depth + 1);
+            print_ast(n->as.if_stmt.then_body, depth + 1);
+            print_ast(n->as.if_stmt.else_body, depth + 1);
+            break;
         default:
             break;
     }
@@ -474,6 +512,7 @@ int main(void) {
         "}\n"
         "main {\n"
         "  while (x < 10) { x = x + 1; }\n"
+        "  if (x < 5) { x = x + 1; } elif (x < 8) { x = x + 2; } else { x = x - 1; }\n"
         "}\n";
 
     Parser parser;

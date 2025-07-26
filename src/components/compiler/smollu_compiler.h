@@ -42,6 +42,7 @@ typedef enum {
     TOK_KW_LOCAL,
     TOK_KW_WHILE,
     TOK_KW_IF,
+    TOK_KW_ELIF,
     TOK_KW_ELSE,
 
     /* Operators */
@@ -135,7 +136,8 @@ typedef enum {
     AST_BINARY,
     AST_UNARY,
     AST_ASSIGNMENT,
-    AST_WHILE
+    AST_WHILE,
+    AST_IF
 } NodeType;
 
 typedef struct ASTNode ASTNode;
@@ -173,6 +175,11 @@ struct ASTNode {
             ASTNode *init;     /* AST_BLOCK */
             ASTNode *main;     /* AST_BLOCK */
         } program;
+        struct {                /* If statement */
+            ASTNode *condition; /* AST_BINARY */
+            ASTNode *then_body; /* AST_BLOCK */
+            ASTNode *else_body; /* NULL or AST_BLOCK */
+        } if_stmt;
         struct {               /* Block */
             ASTNode *stmts;    /* linked-list of statements */
         } block;

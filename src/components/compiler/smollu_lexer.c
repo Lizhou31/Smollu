@@ -94,6 +94,7 @@ static TokenType keyword_type(const char *lexeme) {
     if (strcmp(lexeme, "local") == 0)    return TOK_KW_LOCAL;
     if (strcmp(lexeme, "while") == 0)    return TOK_KW_WHILE;
     if (strcmp(lexeme, "if") == 0)       return TOK_KW_IF;
+    if (strcmp(lexeme, "elif") == 0)     return TOK_KW_ELIF;
     if (strcmp(lexeme, "else") == 0)     return TOK_KW_ELSE;
     return TOK_IDENTIFIER;
 }
