@@ -20,14 +20,20 @@ This project aims to build a small script language for my own use and learning.
 
 ## Doc
 
-- [ ] [Language Spec](doc/Language Spec.md)
-- [ ] [Instruction Set](doc/Instruction Set.md)
+- [x] Language Spec
+- [ ] Instruction Set
 
 ## Project structure
 
 ```
 smollu/
 ├── src/            # Source code
+    ├── components/      # Components
+        ├── compiler/    # Compiler
+        ├── vm/          # VM
+        └── interpreter/ # Interpreter
+    └── smollu.h       # Public header file
 ├── test/           # Test code
 └── doc/            # Documentation
+
 ```
