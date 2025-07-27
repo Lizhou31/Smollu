@@ -20,6 +20,7 @@
 typedef struct {
     const char *input_file;
     const char *output_file;
+    int output_ast;
 } Options;
 
 static void usage(const char *prog_name) {
@@ -27,10 +28,11 @@ static void usage(const char *prog_name) {
         "Usage: %s [options] <source>\n"
         "Options:\n"
         "  -o <file>   Write output to <file>\n"
+        "  -a          Output AST to file\n"
         "  -h          Show this help\n"
         "\n"
         "Examples:\n"
-        "  %s foo.smol                     # output becomes foo.smolbc (default)\n"
+        "  %s foo.smol                     # output becomes foo.smolbc and foo.smolbc.ast (if -a is specified)\n"
         "  %s foo.smol -o build/foo.smolbc # custom path/name\n",
         prog_name, prog_name, prog_name);
 }
@@ -55,6 +57,8 @@ static int parse_args(int argc, char **argv, Options *opts) {
         if (strcmp(argv[i], "-o") == 0) {
             if (++i == argc) { fprintf(stderr,"-o needs a file\n"); return -1; }
             opts->output_file = argv[i];
+        } else if (strcmp(argv[i], "-a") == 0) {
+            opts->output_ast = 1;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help")==0) {
             usage(argv[0]);
             exit(0);
@@ -83,7 +87,7 @@ static int parse_args(int argc, char **argv, Options *opts) {
     return 0;
 }
 
-static int open_files(const char *input_file, const char *output_file, FILE **in, FILE **out) {
+static int open_files(const char *input_file, const char *output_file, int output_ast, FILE **in, FILE **out, FILE **ast_out) {
     *in = fopen(input_file, "r");
     if (!*in) {
         fprintf(stderr, "Failed to open input file: %s\n", input_file);
@@ -96,16 +100,19 @@ static int open_files(const char *input_file, const char *output_file, FILE **in
         return -1;
     }
 
+    if (output_ast) {
+        *ast_out = fopen(replace_text(output_file, ".smolbc.ast"), "w+");
+        if (!*ast_out) {
+            fprintf(stderr, "Failed to create AST output file: %s\n", replace_text(output_file, ".smolbc.ast"));
+            return -1;
+        }
+    } else {
+        *ast_out = NULL;
+    }
+
     return 0;
 }
 
-/* ──────────────────────────────────────────────────────────────────────────── */
-/*  Public Compiler API                                                         */
-/* ──────────────────────────────────────────────────────────────────────────── */
-
-/* ──────────────────────────────────────────────────────────────────────────── */
-/* Test functions                                                               */
-/* ──────────────────────────────────────────────────────────────────────────── */
 static void print_indent(int n, FILE *out) { while (n--) fprintf(out, "  "); }
 
 static void print_ast(ASTNode *n, int depth, FILE *out) {
@@ -190,7 +197,11 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
     }
 }
 
-int smollu_compile(FILE *in, FILE *out) {
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  Public Compiler API                                                         */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+int smollu_compile(FILE *in, FILE *out, FILE *ast_out) {
 
     /* Read entire input file into memory */
     fseek(in, 0, SEEK_END);
@@ -217,9 +228,17 @@ int smollu_compile(FILE *in, FILE *out) {
     parser_init(&parser, &lex);
     ASTNode *root = parse_program(&parser);
 
+    /* Print bytecode to output file */
+    if (out) {
+        // print_ast(root, 0, out);
+        // fflush(out);
+    }
+
     /* Print AST to output file */
-    print_ast(root, 0, out);
-    fflush(out);
+    if (ast_out) {
+        print_ast(root, 0, ast_out);
+        fflush(ast_out);
+    }
 
     ast_free(root);
     parser_free(&parser);
@@ -235,15 +254,18 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    FILE *in, *out;
-    if (open_files(opts.input_file, opts.output_file, &in, &out) < 0) {
+    FILE *in, *out, *ast_out;
+    if (open_files(opts.input_file, opts.output_file, opts.output_ast, &in, &out, &ast_out) < 0) {
         return 1;
     }
 
     printf("Compiling %s to %s\n", opts.input_file, opts.output_file);
-    smollu_compile(in, out);
+    smollu_compile(in, out, ast_out);
 
     fclose(in);
     fclose(out);
+    if (opts.output_ast) {
+        fclose(ast_out);
+    }
     return 0;
 }

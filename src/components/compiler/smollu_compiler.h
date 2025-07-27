@@ -214,6 +214,6 @@ void     ast_free(ASTNode *node);
 /* ──────────────────────────────────────────────────────────────────────────── */
 /*  Public Compiler API                                                        */
 /* ──────────────────────────────────────────────────────────────────────────── */
-int smollu_compile(FILE *in, FILE *out);
+int smollu_compile(FILE *in, FILE *out, FILE *ast_out);
 
 #endif /* SMOLLU_COMPILER_H */
