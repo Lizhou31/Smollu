@@ -89,6 +89,7 @@ static Token make_token(Lexer *l, TokenType type, size_t start, size_t end) {
 static TokenType keyword_type(const char *lexeme) {
     if (strcmp(lexeme, "native") == 0)   return TOK_KW_NATIVE;
     if (strcmp(lexeme, "function") == 0) return TOK_KW_FUNCTION;
+    if (strcmp(lexeme, "functions") == 0) return TOK_KW_FUNCTIONS;
     if (strcmp(lexeme, "init") == 0)     return TOK_KW_INIT;
     if (strcmp(lexeme, "main") == 0)     return TOK_KW_MAIN;
     if (strcmp(lexeme, "local") == 0)    return TOK_KW_LOCAL;
@@ -262,6 +263,7 @@ const char *token_type_name(TokenType t) {
 
         case TOK_KW_NATIVE:     return "KW_NATIVE";
         case TOK_KW_FUNCTION:   return "KW_FUNCTION";
+        case TOK_KW_FUNCTIONS:  return "KW_FUNCTIONS";
         case TOK_KW_INIT:       return "KW_INIT";
         case TOK_KW_MAIN:       return "KW_MAIN";
         case TOK_KW_LOCAL:      return "KW_LOCAL";

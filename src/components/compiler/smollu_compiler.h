@@ -37,6 +37,7 @@ typedef enum {
     /* Keywords */
     TOK_KW_NATIVE,
     TOK_KW_FUNCTION,
+    TOK_KW_FUNCTIONS,
     TOK_KW_INIT,
     TOK_KW_MAIN,
     TOK_KW_LOCAL,
@@ -137,7 +138,11 @@ typedef enum {
     AST_UNARY,
     AST_ASSIGNMENT,
     AST_WHILE,
-    AST_IF
+    AST_IF,
+    AST_FUNCTION_CALL,
+    AST_NATIVE_CALL,
+    AST_FUNCTION_DEF,
+    AST_PARAMETER_LIST
 } NodeType;
 
 typedef struct ASTNode ASTNode;
@@ -172,8 +177,9 @@ struct ASTNode {
             ASTNode *body;     /* AST_BLOCK */
         } while_stmt;
         struct {
-            ASTNode *init;     /* AST_BLOCK */
-            ASTNode *main;     /* AST_BLOCK */
+            ASTNode *init;      /* AST_BLOCK */
+            ASTNode *main;      /* AST_BLOCK */
+            ASTNode *functions; /* AST_BLOCK containing function definitions */
         } program;
         struct {                /* If statement */
             ASTNode *condition; /* AST_BINARY */
@@ -183,6 +189,22 @@ struct ASTNode {
         struct {               /* Block */
             ASTNode *stmts;    /* linked-list of statements */
         } block;
+        struct {               /* Function call */
+            char    *name;     /* function name */
+            ASTNode *args;     /* linked-list of argument expressions */
+        } func_call;
+        struct {               /* Native call */
+            char    *name;     /* native function name */
+            ASTNode *args;     /* linked-list of argument expressions */
+        } native_call;
+        struct {               /* Function definition */
+            char    *name;     /* function name */
+            ASTNode *params;   /* linked-list of parameter names (identifiers) */
+            ASTNode *body;     /* AST_BLOCK */
+        } func_def;
+        struct {               /* Parameter list */
+            char    *param_name; /* parameter name */
+        } param;
     } as;
 };
 

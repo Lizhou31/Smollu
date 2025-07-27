@@ -155,12 +155,25 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
         case AST_IF:
             fprintf(out, "If\n");
             break;
+        case AST_FUNCTION_CALL:
+            fprintf(out, "FunctionCall %s\n", n->as.func_call.name);
+            break;
+        case AST_NATIVE_CALL:
+            fprintf(out, "NativeCall %s\n", n->as.native_call.name);
+            break;
+        case AST_FUNCTION_DEF:
+            fprintf(out, "FunctionDef %s\n", n->as.func_def.name);
+            break;
+        case AST_PARAMETER_LIST:
+            fprintf(out, "Parameter %s\n", n->as.param.param_name);
+            break;
     }
     /* Print children */
     switch (n->type) {
         case AST_PROGRAM:
             print_ast(n->as.program.init, depth + 1, out);
             print_ast(n->as.program.main, depth + 1, out);
+            print_ast(n->as.program.functions, depth + 1, out);
             break;
         case AST_BLOCK: {
             ASTNode *cur = n->as.block.stmts;
@@ -188,6 +201,19 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
             print_ast(n->as.if_stmt.condition, depth + 1, out);
             print_ast(n->as.if_stmt.then_body, depth + 1, out);
             print_ast(n->as.if_stmt.else_body, depth + 1, out);
+            break;
+        case AST_FUNCTION_CALL:
+            print_ast(n->as.func_call.args, depth + 1, out);
+            break;
+        case AST_NATIVE_CALL:
+            print_ast(n->as.native_call.args, depth + 1, out);
+            break;
+        case AST_FUNCTION_DEF:
+            print_ast(n->as.func_def.params, depth + 1, out);
+            print_ast(n->as.func_def.body, depth + 1, out);
+            break;
+        case AST_PARAMETER_LIST:
+            /* Parameters don't have children */
             break;
         default:
             break;

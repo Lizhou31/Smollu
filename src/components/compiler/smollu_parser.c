@@ -62,6 +62,30 @@ static void parser_expect(Parser *p, TokenType t, const char *msg) {
 
 /* Forward declarations for expression parsing (precedence climbing) */
 static ASTNode *parse_expression(Parser *p);
+static ASTNode *parse_argument_list(Parser *p);
+
+/* ─────────────────── Function call helpers --------------------------------- */
+static ASTNode *parse_argument_list(Parser *p) {
+    if (parser_check(p, TOK_RPAREN)) {
+        return NULL; /* empty argument list */
+    }
+    
+    ASTNode *args = NULL;
+    ASTNode *last = NULL;
+    
+    do {
+        ASTNode *arg = parse_expression(p);
+        if (!args) {
+            args = arg;
+            last = arg;
+        } else {
+            last->next = arg;
+            last = arg;
+        }
+    } while (parser_match(p, TOK_COMMA));
+    
+    return args;
+}
 
 /* ─────────────────── Primary ------------------------------------------------ */
 static ASTNode *parse_primary(Parser *p) {
@@ -108,19 +132,46 @@ static ASTNode *parse_primary(Parser *p) {
     }
 }
 
+/* ─────────────────── Postfix (function calls) ------------------------------ */
+static ASTNode *parse_postfix(Parser *p) {
+    ASTNode *expr = parse_primary(p);
+    
+    while (parser_check(p, TOK_LPAREN)) {
+        if (expr->type != AST_IDENTIFIER) {
+            fprintf(stderr, "[Parser] Function call on non-identifier at %d:%d\n", 
+                    p->current.line, p->current.column);
+            exit(1);
+        }
+        
+        Token tok = p->current;
+        parser_advance(p); /* consume '(' */
+        ASTNode *args = parse_argument_list(p);
+        parser_expect(p, TOK_RPAREN, ")");
+        
+        ASTNode *call = new_node(AST_FUNCTION_CALL, tok.line, tok.column);
+        call->as.func_call.name = strdup(expr->as.identifier);
+        call->as.func_call.args = args;
+        
+        ast_free(expr); /* free the original identifier node */
+        expr = call;
+    }
+    
+    return expr;
+}
+
 /* ─────────────────── Unary -------------------------------------------------- */
 static ASTNode *parse_unary(Parser *p) {
-    if (parser_match(p, TOK_BANG) || parser_match(p, TOK_MINUS)) {
-        TokenType op = p->current.type == TOK_BANG ? TOK_BANG : TOK_MINUS; /* but we've already advanced */
-        /* The current token is the one *after* the operator due to match's advance, so rewind op token */
-        TokenType used_op = op; /* hold operator token type */
+    if (parser_check(p, TOK_BANG) || parser_check(p, TOK_MINUS)) {
+        TokenType op = p->current.type;
+        Token tok = p->current;
+        parser_advance(p);
         ASTNode *operand = parse_unary(p);
-        ASTNode *n = new_node(AST_UNARY, operand->line, operand->column);
-        n->as.unary.op = used_op;
+        ASTNode *n = new_node(AST_UNARY, tok.line, tok.column);
+        n->as.unary.op = op;
         n->as.unary.expr = operand;
         return n;
     }
-    return parse_primary(p);
+    return parse_postfix(p);
 }
 
 /* Helper to create binary expression nodes */
@@ -266,12 +317,34 @@ static ASTNode *parse_statement(Parser *p) {
     if (parser_check(p, TOK_KW_IF)) {
         return parse_if(p);
     }
+    if (parser_check(p, TOK_KW_NATIVE)) {
+        Token tok = p->current;
+        parser_advance(p); /* consume 'native' */
+        
+        if (!parser_check(p, TOK_IDENTIFIER)) {
+            fprintf(stderr, "[Parser] Expected identifier after 'native' at %d:%d\n", 
+                    p->current.line, p->current.column);
+            exit(1);
+        }
+        
+        char *name = strdup(p->current.lexeme);
+        parser_advance(p); /* consume identifier */
+        parser_expect(p, TOK_LPAREN, "(");
+        ASTNode *args = parse_argument_list(p);
+        parser_expect(p, TOK_RPAREN, ")");
+        parser_expect(p, TOK_SEMICOLON, ";");
+        
+        ASTNode *native_call = new_node(AST_NATIVE_CALL, tok.line, tok.column);
+        native_call->as.native_call.name = name;
+        native_call->as.native_call.args = args;
+        return native_call;
+    }
     if (parser_check(p, TOK_KW_LOCAL)) {
         parser_advance(p);
         return parse_assignment(p, 1);
     }
     if (parser_check(p, TOK_IDENTIFIER)) {
-        /* Lookahead for assignment */
+        /* Lookahead for assignment or function call */
         size_t saved_pos   = p->lex->pos;
         int    saved_line  = p->lex->line;
         int    saved_col   = p->lex->column;
@@ -284,7 +357,23 @@ static ASTNode *parse_statement(Parser *p) {
         p->lex->column = saved_col;
 
         if (next_tok.type == TOK_EQUAL) {
+            token_free(&next_tok);
             return parse_assignment(p, 0);
+        } else if (next_tok.type == TOK_LPAREN) {
+            /* Function call statement */
+            Token ident_tok = p->current;
+            char *name = strdup(ident_tok.lexeme);
+            parser_advance(p); /* consume identifier */
+            parser_advance(p); /* consume '(' */
+            ASTNode *args = parse_argument_list(p);
+            parser_expect(p, TOK_RPAREN, ")");
+            parser_expect(p, TOK_SEMICOLON, ";");
+            
+            ASTNode *func_call = new_node(AST_FUNCTION_CALL, ident_tok.line, ident_tok.column);
+            func_call->as.func_call.name = name;
+            func_call->as.func_call.args = args;
+            token_free(&next_tok);
+            return func_call;
         }
         token_free(&next_tok);
         /* else fallthrough to expression statement */
@@ -344,18 +433,95 @@ static ASTNode *parse_main(Parser *p) {
     return main;
 }
 
+static ASTNode *parse_parameter_list(Parser *p) {
+    if (parser_check(p, TOK_RPAREN)) {
+        return NULL; /* empty parameter list */
+    }
+    
+    ASTNode *params = NULL;
+    ASTNode *last = NULL;
+    
+    do {
+        if (!parser_check(p, TOK_IDENTIFIER)) {
+            fprintf(stderr, "[Parser] Expected parameter name at %d:%d\n", 
+                    p->current.line, p->current.column);
+            exit(1);
+        }
+        
+        ASTNode *param = new_node(AST_PARAMETER_LIST, p->current.line, p->current.column);
+        param->as.param.param_name = strdup(p->current.lexeme);
+        parser_advance(p);
+        
+        if (!params) {
+            params = param;
+            last = param;
+        } else {
+            last->next = param;
+            last = param;
+        }
+    } while (parser_match(p, TOK_COMMA));
+    
+    return params;
+}
+
+static ASTNode *parse_function_def(Parser *p) {
+    Token tok = p->current; /* TOK_KW_FUNCTION */
+    parser_advance(p);
+    
+    if (!parser_check(p, TOK_IDENTIFIER)) {
+        fprintf(stderr, "[Parser] Expected function name at %d:%d\n", 
+                p->current.line, p->current.column);
+        exit(1);
+    }
+    
+    char *name = strdup(p->current.lexeme);
+    parser_advance(p);
+    
+    parser_expect(p, TOK_LPAREN, "(");
+    ASTNode *params = parse_parameter_list(p);
+    parser_expect(p, TOK_RPAREN, ")");
+    ASTNode *body = parse_block(p);
+    
+    ASTNode *func_def = new_node(AST_FUNCTION_DEF, tok.line, tok.column);
+    func_def->as.func_def.name = name;
+    func_def->as.func_def.params = params;
+    func_def->as.func_def.body = body;
+    return func_def;
+}
+
+static ASTNode *parse_functions(Parser *p) {
+    parser_expect(p, TOK_LBRACE, "{");
+    ASTNode *funcs = NULL;
+    while (!parser_check(p, TOK_RBRACE) && !parser_check(p, TOK_EOF)) {
+        if (parser_check(p, TOK_KW_FUNCTION)) {
+            ASTNode *func_def = parse_function_def(p);
+            funcs = append_statement(funcs, func_def);
+        } else {
+            fprintf(stderr, "[Parser] Expected 'function' in functions section at %d:%d\n", 
+                    p->current.line, p->current.column);
+            exit(1);
+        }
+    }
+    parser_expect(p, TOK_RBRACE, "}");
+    ASTNode *functions_block = new_node(AST_BLOCK, 1, 1);
+    functions_block->as.block.stmts = funcs;
+    return functions_block;
+}
+
 ASTNode *parse_program(Parser *p) {
-    ASTNode *stmts = NULL;
     parser_expect(p, TOK_KW_INIT, "init");
     ASTNode *init = parse_init(p);
 
-    stmts = NULL;
     parser_expect(p, TOK_KW_MAIN, "main");
     ASTNode *main = parse_main(p);
+
+    parser_expect(p, TOK_KW_FUNCTIONS, "functions");
+    ASTNode *functions = parse_functions(p);
 
     ASTNode *root = new_node(AST_PROGRAM, 1, 1);
     root->as.program.init = init;
     root->as.program.main = main;
+    root->as.program.functions = functions;
     return root;
 }
 
@@ -411,6 +577,42 @@ void ast_free(ASTNode *node) {
         case AST_PROGRAM: {
             ast_free(node->as.program.init);
             ast_free(node->as.program.main);
+            ast_free(node->as.program.functions);
+            break;
+        }
+        case AST_FUNCTION_CALL: {
+            free(node->as.func_call.name);
+            ASTNode *arg = node->as.func_call.args;
+            while (arg) {
+                ASTNode *next = arg->next;
+                ast_free(arg);
+                arg = next;
+            }
+            break;
+        }
+        case AST_NATIVE_CALL: {
+            free(node->as.native_call.name);
+            ASTNode *arg = node->as.native_call.args;
+            while (arg) {
+                ASTNode *next = arg->next;
+                ast_free(arg);
+                arg = next;
+            }
+            break;
+        }
+        case AST_FUNCTION_DEF: {
+            free(node->as.func_def.name);
+            ASTNode *param = node->as.func_def.params;
+            while (param) {
+                ASTNode *next = param->next;
+                ast_free(param);
+                param = next;
+            }
+            ast_free(node->as.func_def.body);
+            break;
+        }
+        case AST_PARAMETER_LIST: {
+            free(node->as.param.param_name);
             break;
         }
         default:
@@ -463,12 +665,25 @@ static void print_ast(ASTNode *n, int depth) {
         case AST_IF:
             printf("If\n");
             break;
+        case AST_FUNCTION_CALL:
+            printf("FunctionCall %s\n", n->as.func_call.name);
+            break;
+        case AST_NATIVE_CALL:
+            printf("NativeCall %s\n", n->as.native_call.name);
+            break;
+        case AST_FUNCTION_DEF:
+            printf("FunctionDef %s\n", n->as.func_def.name);
+            break;
+        case AST_PARAMETER_LIST:
+            printf("Parameter %s\n", n->as.param.param_name);
+            break;
     }
     /* Print children */
     switch (n->type) {
         case AST_PROGRAM:
             print_ast(n->as.program.init, depth + 1);
             print_ast(n->as.program.main, depth + 1);
+            print_ast(n->as.program.functions, depth + 1);
             break;
         case AST_BLOCK: {
             ASTNode *cur = n->as.block.stmts;
@@ -497,6 +712,34 @@ static void print_ast(ASTNode *n, int depth) {
             print_ast(n->as.if_stmt.then_body, depth + 1);
             print_ast(n->as.if_stmt.else_body, depth + 1);
             break;
+        case AST_FUNCTION_CALL: {
+            ASTNode *arg = n->as.func_call.args;
+            while (arg) {
+                print_ast(arg, depth + 1);
+                arg = arg->next;
+            }
+            break;
+        }
+        case AST_NATIVE_CALL: {
+            ASTNode *arg = n->as.native_call.args;
+            while (arg) {
+                print_ast(arg, depth + 1);
+                arg = arg->next;
+            }
+            break;
+        }
+        case AST_FUNCTION_DEF: {
+            ASTNode *param = n->as.func_def.params;
+            while (param) {
+                print_ast(param, depth + 1);
+                param = param->next;
+            }
+            print_ast(n->as.func_def.body, depth + 1);
+            break;
+        }
+        case AST_PARAMETER_LIST:
+            /* Parameters don't have children */
+            break;
         default:
             break;
     }
@@ -507,12 +750,37 @@ static void print_ast(ASTNode *n, int depth) {
 int main(void) {
     const char *code =
         "init {\n"
-        "  local x = 1;\n"
+        "  local x = 1 + 1;\n"
         "  local y = 2.1;\n"
+        "  native print(x, y);\n"
+        "  setup_environment();\n"
         "}\n"
         "main {\n"
         "  while (x < 10) { x = x + 1; }\n"
         "  if (x < 5) { x = x + 1; } elif (x < 8) { x = x + 2; } else { x = x - 1; }\n"
+        "  local result = add(x, y);\n"
+        "  process_data(x, y, result);\n"
+        "  native print(result);\n"
+        "  cleanup();\n"
+        "}\n"
+        "functions {\n"
+        "  function add(a, b) {\n"
+        "    local sum = a + b;\n"
+        "    x = sum;\n"
+        "  }\n"
+        "  function setup_environment() {\n"
+        "    native init_system();\n"
+        "    local config = 42;\n"
+        "  }\n"
+        "  function process_data(x, y, result) {\n"
+        "    native log(x, y, result);\n"
+        "    if (result > 10) {\n"
+        "      native alert(result);\n"
+        "    }\n"
+        "  }\n"
+        "  function cleanup() {\n"
+        "    native shutdown();\n"
+        "  }\n"
         "}\n";
 
     Parser parser;
