@@ -23,14 +23,20 @@
 
 ### Example
 ```lua
--- top level code
+init {
+    native gpio_write(pin, value);  -- <native-decl>
+    LED_PIN = 1;                    -- <global-assign>
+}
 
-native gpio_write(pin, value)  -- <native-decl>
-LED_PIN = 1                    -- <global-assign>
+main {
+    blink();
+}
 
-function blink()
-    gpio_write(LED_PIN, 1)
-end
+functions {
+    function blink() {
+        gpio_write(LED_PIN, 1);
+    }
+}
 ```
 
 ## 3. Values & types
@@ -48,17 +54,18 @@ end
 
 ## 4. Statements
 ```BNF
-<init_stat>  ::= "init {" (<func_def> | <assign_stat> | <native_decl>)+ "}"
+<init_stat>  ::= "init {" ((<assign_stat> | <native_decl> | <func_call> | <native_call>) ";")+ "}"
 
 <main_stat> ::= "main {" <statement>+ "}"
 
-<statement> ::= <assign_stat> | <if_stat> | <while_stat> | <native_call> | <func_call>
+<statement> ::= <assign_stat> ";" | <if_stat> | <while_stat> | <native_call> ";" | <func_call> ";"
 
+<functions> ::= "functions" "{" <func_def>+ "}"
 ```
 
 ### 4.1 Assignment & Arithmetic
 ```BNF
-<assign_stat> ::= "local "? <identifier> "=" <expr> ";"
+<assign_stat> ::= "local "? <identifier> "=" <expr>
 <expr> ::= <m_exp> | <b_exp> | <func_call> | <native_call>
 
 <m_exp> ::= (<integer> | <float>) 
@@ -126,4 +133,24 @@ if (x < 10) {
 }
 ```
 
+#### 4.2.3 Functions and Native Calls
+```BNF
+<func_def> ::= "function" <identifier> "(" <parameter_list> ")" "{" <statement>+ "}"
+<func_call> ::= <identifier> "(" ((<identifier>) ("," <identifier>)*) ")"
+<native_call> ::= <identifier> "(" ((<identifier>) ("," <identifier>)*) ")"
+```
 
+##### Example
+```lua
+native gpio_write(pin, value); -- <native-decl>
+
+function blink(pin) {          -- <func-def>
+    gpio_write(pin, 1);
+}
+
+blink(LED_PIN);                -- <func-call>
+```
+
+* The native function should be declared in the init section.
+
+* The function should be defined in the functions section.
