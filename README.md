@@ -30,8 +30,7 @@ smollu/
 ├── src/            # Source code
     ├── components/      # Components
         ├── compiler/    # Compiler
-        ├── vm/          # VM
-        └── interpreter/ # Interpreter
+        └── vm/          # VM and interpreter
     └── smollu.h       # Public header file
 ├── test/           # Test code
 └── doc/            # Documentation
