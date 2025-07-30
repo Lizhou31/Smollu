@@ -34,6 +34,13 @@ target_include_directories(smollu_compiler PUBLIC
 )
 target_link_libraries(smollu_compiler PUBLIC smollu_parser smollu_lexer)
 
+# Add Smollu VM library
+add_library(smollu_vm STATIC src/components/vm/smollu_vm.c)
+
+target_include_directories(smollu_vm PUBLIC
+    src/components/vm
+)
+
 # ---------------------------------------------------------------------------
 #  Tests (Criterion)
 # ---------------------------------------------------------------------------
@@ -79,6 +86,26 @@ if(BUILD_TESTS)
     target_link_directories(test_smollu_parser PRIVATE ${CRITERION_LIBRARY_DIRS})
 
     add_test(NAME parser_tests COMMAND test_smollu_parser --verbose)
+
+    # -------------------- VM tests --------------------
+    add_executable(test_smollu_vm
+        test/test_smollu_vm.c
+    )
+
+    target_include_directories(test_smollu_vm PRIVATE
+        ${CRITERION_INCLUDE_DIRS}
+        src/components/vm
+    )
+
+    target_link_libraries(test_smollu_vm
+        smollu_vm
+        ${CRITERION_LIBRARIES}
+    )
+
+    target_compile_options(test_smollu_vm PRIVATE ${CRITERION_CFLAGS_OTHER})
+    target_link_directories(test_smollu_vm PRIVATE ${CRITERION_LIBRARY_DIRS})
+
+    add_test(NAME vm_tests COMMAND test_smollu_vm --verbose)
 endif()
 
 # ---------------------------------------------------------------------------
