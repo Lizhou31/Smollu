@@ -24,7 +24,6 @@
 ### Example
 ```lua
 init {
-    native gpio_write(pin, value);  -- <native-decl>
     LED_PIN = 1;                    -- <global-assign>
 }
 
@@ -33,8 +32,8 @@ main {
 }
 
 functions {
-    function blink() {
-        gpio_write(LED_PIN, 1);
+    blink() {
+        native gpio_write(LED_PIN, 1);  -- <native-call>
     }
 }
 ```
@@ -54,7 +53,7 @@ functions {
 
 ## 4. Statements
 ```BNF
-<init_stat>  ::= "init {" ((<assign_stat> | <native_decl> | <func_call> | <native_call>) ";")+ "}"
+<init_stat>  ::= "init {" ((<assign_stat> | <func_call> | <native_call>) ";")+ "}"
 
 <main_stat> ::= "main {" <statement>+ "}"
 
@@ -142,15 +141,17 @@ if (x < 10) {
 
 ##### Example
 ```lua
-native gpio_write(pin, value); -- <native-decl>
+init {
 
-function blink(pin) {          -- <func-def>
-    gpio_write(pin, 1);
 }
-
-blink(LED_PIN);                -- <func-call>
+main {
+    blink(LED_PIN);                 -- <func-call>
+}
+functions {
+    blink(pin) {           -- <func-def>
+        native gpio_write(pin, 1);  -- <native-call>
+    }
+}
 ```
-
-* The native function should be declared in the init section.
 
 * The function should be defined in the functions section.
