@@ -203,10 +203,16 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
             print_ast(n->as.if_stmt.else_body, depth + 1, out);
             break;
         case AST_FUNCTION_CALL:
-            print_ast(n->as.func_call.args, depth + 1, out);
+            while (n->as.func_call.args) {
+                print_ast(n->as.func_call.args, depth + 1, out);
+                n->as.func_call.args = n->as.func_call.args->next;
+            }
             break;
         case AST_NATIVE_CALL:
-            print_ast(n->as.native_call.args, depth + 1, out);
+            while (n->as.native_call.args) {
+                print_ast(n->as.native_call.args, depth + 1, out);
+                n->as.native_call.args = n->as.native_call.args->next;
+            }
             break;
         case AST_FUNCTION_DEF:
             while (n->as.func_def.params) {
