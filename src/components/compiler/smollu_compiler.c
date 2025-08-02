@@ -209,7 +209,10 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
             print_ast(n->as.native_call.args, depth + 1, out);
             break;
         case AST_FUNCTION_DEF:
-            print_ast(n->as.func_def.params, depth + 1, out);
+            while (n->as.func_def.params) {
+                print_ast(n->as.func_def.params, depth + 1, out);
+                n->as.func_def.params = n->as.func_def.params->next;
+            }
             print_ast(n->as.func_def.body, depth + 1, out);
             break;
         case AST_PARAMETER_LIST:
