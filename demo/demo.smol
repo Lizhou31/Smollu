@@ -1,0 +1,23 @@
+init {
+  local x = 1 + 1;
+  local y = 2.1;
+  native print(x, y);
+}
+main {
+  x = 0;
+  y = 2.1;
+  while (x < 10) { 
+    x = x + 1; 
+    native print(x);
+  }
+  if (x < 5) { x = x + 1; } elif (x < 8) { x = x + 2; } else { x = x - 1; native print(x);}
+  local result = add(x, y);
+  native print(result);
+  
+}
+functions {
+  function add(a, b) {
+    local sum = a + b;
+    x = sum;
+  }
+}

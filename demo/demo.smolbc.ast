@@ -1,0 +1,69 @@
+Program
+  Block
+    Assign x (local=1)
+      Binary +
+        Int 1
+        Int 1
+    Assign y (local=1)
+      Float 2.100000
+    NativeCall print
+      Identifier x
+      Identifier y
+  Block
+    Assign x (local=0)
+      Int 0
+    Assign y (local=0)
+      Float 2.100000
+    While
+      Binary <
+        Identifier x
+        Int 10
+      Block
+        Assign x (local=0)
+          Binary +
+            Identifier x
+            Int 1
+        NativeCall print
+          Identifier x
+    If
+      Binary <
+        Identifier x
+        Int 5
+      Block
+        Assign x (local=0)
+          Binary +
+            Identifier x
+            Int 1
+      If
+        Binary <
+          Identifier x
+          Int 8
+        Block
+          Assign x (local=0)
+            Binary +
+              Identifier x
+              Int 2
+        Block
+          Assign x (local=0)
+            Binary -
+              Identifier x
+              Int 1
+          NativeCall print
+            Identifier x
+    Assign result (local=1)
+      FunctionCall add
+        Identifier x
+        Identifier y
+    NativeCall print
+      Identifier result
+  Block
+    FunctionDef add
+      Parameter a
+      Parameter b
+      Block
+        Assign sum (local=1)
+          Binary +
+            Identifier a
+            Identifier b
+        Assign x (local=0)
+          Identifier sum

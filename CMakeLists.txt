@@ -109,6 +109,18 @@ if(BUILD_TESTS)
 endif()
 
 # ---------------------------------------------------------------------------
+#  Demo executable
+# ---------------------------------------------------------------------------
+add_executable(smollu_demo
+    demo/smollu_demo.c
+)
+target_include_directories(smollu_demo PUBLIC
+    src/components/vm
+    demo
+)
+target_link_libraries(smollu_demo PUBLIC smollu_vm)
+
+# ---------------------------------------------------------------------------
 #  Usage
 # ---------------------------------------------------------------------------
 # mkdir build && cd build
