@@ -313,7 +313,7 @@ int smollu_vm_run(SmolluVM *vm) {
 
             /* Function */
             case OP_CALL: {
-                uint8_t func_addr = read_u8(vm);
+                uint16_t func_addr = read_u16(vm);
                 uint8_t argc      = read_u8(vm);
                 if (vm->fp >= SMOLLU_CALLSTACK_MAX) {
                     fprintf(stderr,"Call stack overflow\n");

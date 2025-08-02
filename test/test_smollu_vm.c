@@ -411,7 +411,7 @@ Test(vm, native_call) {
 Test(vm, call_and_ret) {
     const uint8_t code[] = {
         /* 0 */ OP_PUSH_I8, 10,
-        /* 2 */ OP_CALL, 6, 1, /* addr=6, argc=1 */
+        /* 2 */ OP_CALL, 0x07, 0x00, 1, /* addr=6, argc=1 */
         /* 5 */ OP_HALT,
         /* 6 */ OP_LOAD_LOCAL, 0,
         /* 8 */ OP_PUSH_I8, 1,
