@@ -2,9 +2,10 @@
 #define DEMO_BYTECODE_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 /* ────────────────────────────────────────────────────────────────────────── */
-/*  Byte-code opcode constants (duplicated from smollu_vm.c for testing)     */
+/*  Byte-code opcode constants (duplicated from smollu_vm.c for demo)        */
 /* ────────────────────────────────────────────────────────────────────────── */
 enum {
     /* 00–0F Stack & const */
@@ -61,11 +62,32 @@ enum {
     OP_ILLEGAL = 0xFF,
 };
 
-/*
- * Demo bytecode: calculates 1 + 1, prints result using native #0, then halts.
- *
- */
-static const uint8_t demo_bytecode[] = {
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Header + native table (20 bytes)                                         */
+/* ────────────────────────────────────────────────────────────────────────── */
+#define DEMO_NATIVE_COUNT 2
+
+static const uint8_t demo_header_and_table[] = {
+    /* Header (16 bytes) */
+    'S','M','O','L',           /* magic          */
+    0x01,                      /* version        */
+    0x00,                      /* device_id      */
+    0x01,                      /* function_count */
+    DEMO_NATIVE_COUNT,         /* native_count   */
+    0x9F, 0x00, 0x00, 0x00,    /* code_size (159 bytes) */
+    0x00, 0x00, 0x00, 0x00,    /* reserved       */
+
+    /* Native table (2 bytes per entry) */
+    0x00, 0x00,                /* entry 0 -> index 0 */
+    0x01, 0x00,                /* entry 1 -> index 1 */
+};
+
+static const size_t demo_header_and_table_len = sizeof(demo_header_and_table);
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Code section                                                             */
+/* ────────────────────────────────────────────────────────────────────────── */
+static const uint8_t demo_code[] = {
     OP_PUSH_NIL,
     OP_PUSH_NIL,
     OP_PUSH_I32, 1, 0, 0, 0,
@@ -78,8 +100,8 @@ static const uint8_t demo_bytecode[] = {
     OP_LOAD_LOCAL, 1,
     OP_NCALL, 0, 2,
     OP_POP,
-    OP_POP,      // end of init
-    OP_PUSH_NIL, // local result
+    OP_POP,                     /* end of init */
+    OP_PUSH_NIL,                /* local result */
     OP_PUSH_I32, 0, 0, 0, 0,
     OP_STORE_GLOBAL, 0,
     OP_PUSH_F32, 0x66, 0x66, 0x06, 0x40,
@@ -94,7 +116,7 @@ static const uint8_t demo_bytecode[] = {
     OP_STORE_GLOBAL, 0,
     OP_LOAD_GLOBAL, 0,
     OP_NCALL, 0, 1,
-    OP_JMP, 0xe3, 0xff,
+    OP_JMP, 0xE3, 0xFF,
     OP_LOAD_GLOBAL, 0,
     OP_PUSH_I32, 5, 0, 0, 0,
     OP_LT,
@@ -119,20 +141,21 @@ static const uint8_t demo_bytecode[] = {
     OP_NCALL, 0, 1,
     OP_LOAD_GLOBAL, 0,
     OP_LOAD_GLOBAL, 1,
-    OP_CALL, 140, 0x00, 2,  // temp
+    OP_CALL, 145, 0x00, 2,
     OP_NCALL, 0, 1,
-    OP_POP,  // end of main
+    OP_POP,                      /* end of main */
     OP_HALT,
-    OP_PUSH_NIL, // sum
+    OP_PUSH_NIL,                 /* sum */
     OP_LOAD_LOCAL, 0,
     OP_LOAD_LOCAL, 1,
     OP_ADD,
     OP_STORE_LOCAL, 2,
     OP_LOAD_LOCAL, 2,
     OP_STORE_GLOBAL, 0,
+    OP_LOAD_LOCAL, 2,
     OP_RET, 1,
 };
 
-static const size_t demo_bytecode_len = sizeof(demo_bytecode);
+static const size_t demo_code_len = sizeof(demo_code);
 
-#endif /* DEMO_BYTECODE_H */ 
+#endif /* DEMO_BYTECODE_H */

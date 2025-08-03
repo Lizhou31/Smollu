@@ -160,6 +160,29 @@ static Value compare(Value a, Value b, uint8_t op) {
     return value_make_nil();
 }
 
+static void smollu_vm_read_header(SmolluVM *vm, const uint8_t *bytecode) {
+    vm->magic = bytecode[0] | (bytecode[1] << 8) | (bytecode[2] << 16) | (bytecode[3] << 24);
+    vm->version = bytecode[4];
+    vm->device_id = bytecode[5];
+    vm->native_count = bytecode[6];
+    vm->code_size = bytecode[7] | (bytecode[8] << 8) | (bytecode[9] << 16) | (bytecode[10] << 24);
+    vm->reserved = bytecode[11] | (bytecode[12] << 8) | (bytecode[13] << 16) | (bytecode[14] << 24);
+}
+
+static void smollu_vm_read_native_table(SmolluVM *vm, const uint8_t *bytecode, const NativeFn *native_table) {
+    for (uint8_t i = 0; i < vm->native_count; ++i) {
+        vm->natives[i] = native_table[bytecode[i * 2] | (bytecode[i * 2 + 1] << 8)];
+    }
+}
+
+static void smollu_vm_read_code(SmolluVM *vm, const uint8_t *bytecode, size_t len) {
+    vm->bytecode = bytecode;
+    vm->bc_len   = len;
+    vm->pc       = 0;
+    vm->sp       = 0;
+    vm->fp       = 0;
+}
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Public API                                                                */
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -168,12 +191,13 @@ void smollu_vm_init(SmolluVM *vm) {
     memset(vm, 0, sizeof(*vm));
 }
 
+void smollu_vm_prepare(SmolluVM *vm, const uint8_t *bytecode, const NativeFn *native_table) {
+    smollu_vm_read_header(vm, bytecode);
+    smollu_vm_read_native_table(vm, bytecode + 16, native_table);
+}
+
 void smollu_vm_load(SmolluVM *vm, const uint8_t *bytecode, size_t len) {
-    vm->bytecode = bytecode;
-    vm->bc_len   = len;
-    vm->pc       = 0;
-    vm->sp       = 0;
-    vm->fp       = 0;
+    smollu_vm_read_code(vm, bytecode, len);
 }
 
 void smollu_vm_register_native(SmolluVM *vm, uint8_t nat_id, NativeFn fn) {

@@ -35,18 +35,22 @@ static Value nat_rand(Value *args, uint8_t argc) {
     return value_from_int(rand() % (limit ? limit : 1));
 }
 
+/* Device-specific native table */
+static const NativeFn device_native_table[] = { nat_print, nat_rand };
+
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Public helper                                                             */
 /* ────────────────────────────────────────────────────────────────────────── */
 
-int smollu_interpreter_run(const uint8_t *bytecode, size_t len) {
+int smollu_interpreter_run(void) {
     SmolluVM vm;
     smollu_vm_init(&vm);
-    smollu_vm_load(&vm, bytecode, len);
 
-    /* Register core natives */
-    smollu_vm_register_native(&vm, 0, nat_print);
-    smollu_vm_register_native(&vm, 1, nat_rand);
+    /* Read header and register native functions according to the image */
+    smollu_vm_prepare(&vm, demo_header_and_table, device_native_table);
+
+    /* Load the code section */
+    smollu_vm_load(&vm, demo_code, demo_code_len);
 
     int rc = smollu_vm_run(&vm);
     if (rc == 0) {
@@ -65,7 +69,7 @@ int smollu_interpreter_run(const uint8_t *bytecode, size_t len) {
 
 #ifdef SMOLLU_INTERPRETER_MAIN
 int main(int argc, char **argv) {
-    int rc = smollu_interpreter_run(demo_bytecode, demo_bytecode_len);
+    int rc = smollu_interpreter_run();
     return rc;
 }
 #endif /* SMOLLU_INTERPRETER_MAIN */

@@ -69,6 +69,14 @@ typedef struct {
     const uint8_t *bytecode;
     size_t         bc_len;
 
+    /* Header */
+    uint32_t magic;
+    uint8_t  version;
+    uint8_t  device_id;
+    uint8_t  native_count;
+    uint32_t code_size;
+    uint32_t reserved;
+
     /* Execution state */
     size_t   pc;                   /* program counter */
     Value    stack[SMOLLU_STACK_MAX];
@@ -86,6 +94,7 @@ typedef struct {
 /* ────────────────────────────────────────────────────────────────────────── */
 
 void smollu_vm_init(SmolluVM *vm);
+void smollu_vm_prepare(SmolluVM *vm, const uint8_t *bytecode, const NativeFn *native_table);
 void smollu_vm_load(SmolluVM *vm, const uint8_t *bytecode, size_t len);
 void smollu_vm_register_native(SmolluVM *vm, uint8_t nat_id, NativeFn fn);
 int  smollu_vm_run(SmolluVM *vm);
