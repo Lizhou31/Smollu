@@ -444,3 +444,51 @@ Test(vm, jmp) {
     SmolluVM vm = create_and_run(code, sizeof(code));
     expect_int(&vm, 10);
 }
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Prepare / Header / Native table tests                                     */
+/* ────────────────────────────────────────────────────────────────────────── */
+Test(vm, prepare_and_native_table) {
+    /* Device-wide native function table */
+    static const NativeFn device_table[] = { native_sum };
+
+    /* Header (16B) + native table (2B) + code (8B) = 26 bytes */
+    static const uint8_t prog[] = {
+        /* Header */
+        'S','M','O','L',       /* magic */
+        0x01,                  /* version */
+        0x00,                  /* device_id */
+        0x01,                  /* native_count */
+        0x08,0x00,0x00,0x00,   /* code_size */
+        0x00,0x00,0x00,0x00,   /* reserved */
+        0x00,                  /* function_count (unused/padding) */
+        /* Native table (1 entry -> index 0) */
+        0x00,0x00,
+        /* Code section */
+        OP_PUSH_I8, 2,
+        OP_PUSH_I8, 3,
+        OP_NCALL, 0, 2,        /* nat_id=0, argc=2 */
+        OP_HALT
+    };
+
+    const size_t HEADER_SIZE = 16;
+    const size_t TABLE_SIZE  = 2;
+    const size_t CODE_OFFSET = HEADER_SIZE + TABLE_SIZE;
+
+    SmolluVM vm; smollu_vm_init(&vm);
+
+    /* Inject header + native mapping */
+    smollu_vm_prepare(&vm, prog, device_table);
+
+    /* Load and execute the code portion */
+    smollu_vm_load(&vm, prog + CODE_OFFSET, sizeof(prog) - CODE_OFFSET);
+    int rc = smollu_vm_run(&vm);
+    cr_assert_eq(rc, 0);
+
+    /* Validate that the native table was properly registered */
+    cr_assert_eq(vm.native_count, 1);
+    cr_assert(vm.natives[0] == native_sum, "Native table registration failed");
+
+    /* Ensure native execution returned expected result */
+    expect_int(&vm, 5);
+}
