@@ -234,6 +234,13 @@ ASTNode *parse_program(Parser *p);
 /* Recursively free an AST tree. */
 void     ast_free(ASTNode *node);
 
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  Bytecode code generator interface                                        */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/* Generate bytecode from an AST root node. */
+int smollu_generate_bytecode(ASTNode *root, uint8_t device_id, uint8_t version, uint8_t **out_buf, size_t *out_len);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif

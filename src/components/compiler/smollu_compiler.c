@@ -269,10 +269,15 @@ int smollu_compile(FILE *in, FILE *out, FILE *ast_out) {
     parser_init(&parser, &lex);
     ASTNode *root = parse_program(&parser);
 
+    /* Emit bytecode */
+    uint8_t *bytecode;
+    size_t bytecode_len;
+    smollu_generate_bytecode(root, 0, 0, &bytecode, &bytecode_len);
+
     /* Print bytecode to output file */
     if (out) {
-        // print_ast(root, 0, out);
-        // fflush(out);
+        fwrite(bytecode, 1, bytecode_len, out);
+        free(bytecode);
     }
 
     /* Print AST to output file */
