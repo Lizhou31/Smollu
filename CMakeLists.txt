@@ -118,6 +118,27 @@ if(BUILD_TESTS)
     target_link_directories(test_smollu_vm PRIVATE ${CRITERION_LIBRARY_DIRS})
 
     add_test(NAME vm_tests COMMAND test_smollu_vm --verbose)
+
+    # -------------------- Bytecode Codegen tests --------------------
+    add_executable(test_smollu_bytecode_codegen
+        test/test_smollu_bytecode_codegen.c
+    )
+
+    target_include_directories(test_smollu_bytecode_codegen PRIVATE
+        ${CRITERION_INCLUDE_DIRS}
+        src/components/compiler
+        src/components/vm
+    )
+
+    target_link_libraries(test_smollu_bytecode_codegen
+        smollu_codegen
+        ${CRITERION_LIBRARIES}
+    )
+
+    target_compile_options(test_smollu_bytecode_codegen PRIVATE ${CRITERION_CFLAGS_OTHER})
+    target_link_directories(test_smollu_bytecode_codegen PRIVATE ${CRITERION_LIBRARY_DIRS})
+
+    add_test(NAME bytecode_codegen_tests COMMAND test_smollu_bytecode_codegen --verbose)
 endif()
 
 # ---------------------------------------------------------------------------
