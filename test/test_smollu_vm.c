@@ -33,6 +33,8 @@ enum {
     OP_MOD,
     OP_NEG,
     OP_NOT,
+    OP_AND,
+    OP_OR,
 
     /* 30–3F Comparison */
     OP_EQ = 0x30,
@@ -94,6 +96,28 @@ static void expect_float(const SmolluVM *vm, float expected) {
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Arithmetic tests                                                          */
 /* ────────────────────────────────────────────────────────────────────────── */
+Test(vm, arithmetic_and_bool) {
+    const uint8_t code[] = {
+        OP_PUSH_TRUE,
+        OP_PUSH_FALSE,
+        OP_AND,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, false);
+}
+
+Test(vm, arithmetic_or_bool) {
+    const uint8_t code[] = {
+        OP_PUSH_TRUE,
+        OP_PUSH_FALSE,
+        OP_OR,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, true);
+}
+
 Test(vm, arithmetic_add_i8) {
     const uint8_t code[] = {
         OP_PUSH_I8, 5,
@@ -148,6 +172,28 @@ Test(vm, arithmetic_mod_i8) {
     };
     SmolluVM vm = create_and_run(code, sizeof(code));
     expect_int(&vm, 1);
+}
+
+Test(vm, arithmetic_and_i8) {
+    const uint8_t code[] = {
+        OP_PUSH_I8, 15,
+        OP_PUSH_I8, 0,
+        OP_AND,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, false);
+}
+
+Test(vm, arithmetic_or_i8) {
+    const uint8_t code[] = {
+        OP_PUSH_I8, -15,
+        OP_PUSH_I8, 0,
+        OP_OR,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, true);
 }
 
 Test(vm, neg_and_not_i8) {
@@ -228,6 +274,28 @@ Test(vm, arithmetic_mod_i32) {
     expect_int(&vm, 1);
 }
 
+Test(vm, arithmetic_and_i32) {
+    const uint8_t code[] = {
+        OP_PUSH_I32, 15, 0, 0, 0,
+        OP_PUSH_I32, 0, 0, 0, 0,
+        OP_AND,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, false);
+}
+
+Test(vm, arithmetic_or_i32) {
+    const uint8_t code[] = {
+        OP_PUSH_I32, -15, 0xFF, 0xFF, 0xFF,
+        OP_PUSH_I32, 0, 0, 0, 0,
+        OP_OR,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, true);
+}
+
 Test(vm, neg_and_not_i32) {
     const uint8_t prog_neg[] = { OP_PUSH_I32, 7, 0, 0, 0, OP_NEG, OP_HALT };
     SmolluVM vm_neg = create_and_run(prog_neg, sizeof(prog_neg));
@@ -289,6 +357,28 @@ Test(vm, arithmetic_div_f32) {
     expect_float(&vm, 0.6f);
 }
 
+Test(vm, arithmetic_and_f32) {
+    const uint8_t code[] = {
+        OP_PUSH_F32, 0x00, 0x00, 0x40, 0x40,
+        OP_PUSH_F32, 0x00, 0x00, 0x00, 0x00,
+        OP_AND,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, false);
+}
+
+Test(vm, arithmetic_or_f32) {
+    const uint8_t code[] = {
+        OP_PUSH_F32, 0x00, 0x00, 0x40, 0x40,
+        OP_PUSH_F32, 0x00, 0x00, 0x00, 0x00,
+        OP_OR,
+        OP_HALT
+    };
+    SmolluVM vm = create_and_run(code, sizeof(code));
+    expect_bool(&vm, true);
+}
+
 Test(vm, comparison_eq_f32) {
     const uint8_t code[] = {
         OP_PUSH_F32, 0x00, 0x00, 0x40, 0x40,
@@ -310,7 +400,6 @@ Test(vm, comparison_neq_f32) {
     SmolluVM vm = create_and_run(code, sizeof(code));
     expect_bool(&vm, true);
 }
-
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Globals & locals tests                                                    */

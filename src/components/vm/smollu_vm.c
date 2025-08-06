@@ -78,6 +78,8 @@ enum {
     OP_MOD,
     OP_NEG,
     OP_NOT,
+    OP_AND,
+    OP_OR,
 
     /* 30–3F Comparison */
     OP_EQ = 0x30,
@@ -297,7 +299,18 @@ int smollu_vm_run(SmolluVM *vm) {
                 push(vm, value_from_bool(!truthy));
                 break;
             }
-
+            case OP_AND: {
+                Value a = pop(vm);
+                Value b = pop(vm);
+                push(vm, value_from_bool(b.as.i != 0 && a.as.i != 0));
+                break;
+            }
+            case OP_OR: {
+                Value a = pop(vm);
+                Value b = pop(vm);
+                push(vm, value_from_bool(b.as.i != 0 || a.as.i != 0));
+                break;
+            }
             /* Comparison */
             case OP_EQ: case OP_NEQ: case OP_LT: case OP_LE: case OP_GT: case OP_GE: {
                 Value a = pop(vm);
