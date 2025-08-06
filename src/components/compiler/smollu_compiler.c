@@ -164,6 +164,9 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
         case AST_FUNCTION_DEF:
             fprintf(out, "FunctionDef %s\n", n->as.func_def.name);
             break;
+        case AST_RETURN:
+            fprintf(out, "Return\n");
+            break;
         case AST_PARAMETER_LIST:
             fprintf(out, "Parameter %s\n", n->as.param.param_name);
             break;
@@ -220,6 +223,9 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
                 n->as.func_def.params = n->as.func_def.params->next;
             }
             print_ast(n->as.func_def.body, depth + 1, out);
+            break;
+        case AST_RETURN:
+            print_ast(n->as.return_stmt.value, depth + 1, out);
             break;
         case AST_PARAMETER_LIST:
             /* Parameters don't have children */

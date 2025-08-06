@@ -343,6 +343,15 @@ static ASTNode *parse_statement(Parser *p) {
         parser_advance(p);
         return parse_assignment(p, 1);
     }
+
+    if (parser_check(p, TOK_KW_RETURN)) {
+        parser_advance(p);
+        ASTNode *n = new_node(AST_RETURN, p->current.line, p->current.column);
+        n->as.return_stmt.value = parse_expression(p);
+        parser_expect(p, TOK_SEMICOLON, ";");
+        return n;
+    }
+
     if (parser_check(p, TOK_IDENTIFIER)) {
         /* Lookahead for assignment or function call */
         size_t saved_pos   = p->lex->pos;
@@ -611,6 +620,10 @@ void ast_free(ASTNode *node) {
             ast_free(node->as.func_def.body);
             break;
         }
+        case AST_RETURN: {
+            ast_free(node->as.return_stmt.value);
+            break;
+        }
         case AST_PARAMETER_LIST: {
             free(node->as.param.param_name);
             break;
@@ -673,6 +686,9 @@ static void print_ast(ASTNode *n, int depth) {
             break;
         case AST_FUNCTION_DEF:
             printf("FunctionDef %s\n", n->as.func_def.name);
+            break;
+        case AST_RETURN:
+            printf("Return\n");
             break;
         case AST_PARAMETER_LIST:
             printf("Parameter %s\n", n->as.param.param_name);
@@ -737,6 +753,9 @@ static void print_ast(ASTNode *n, int depth) {
             print_ast(n->as.func_def.body, depth + 1);
             break;
         }
+        case AST_RETURN:
+            print_ast(n->as.return_stmt.value, depth + 1);
+            break;
         case AST_PARAMETER_LIST:
             /* Parameters don't have children */
             break;

@@ -237,6 +237,7 @@ Test(parser, function_definition) {
         "  function add(a, b) {\n"
         "    local sum = a + b;\n"
         "    x = sum;\n"
+        "    return sum;\n"
         "  }\n"
         "  function greet(name) {\n"
         "    native print(name);\n"
@@ -269,6 +270,19 @@ Test(parser, function_definition) {
     /* Check function body */
     ASTNode *body = func1->as.func_def.body;
     expect_node_type(body, AST_BLOCK, "function body");
+    ASTNode *body_stmt = body->as.block.stmts;
+    expect_node_type(body_stmt, AST_ASSIGNMENT, "function assignment");
+    cr_assert_str_eq(body_stmt->as.assign.name, "sum");
+
+    body_stmt = body_stmt->next;
+    expect_node_type(body_stmt, AST_ASSIGNMENT, "function assignment");
+    cr_assert_str_eq(body_stmt->as.assign.name, "x");
+
+    body_stmt = body_stmt->next;
+    expect_node_type(body_stmt, AST_RETURN, "function return");
+    ASTNode *return_value = body_stmt->as.return_stmt.value;
+    expect_node_type(return_value, AST_IDENTIFIER, "return value");
+    cr_assert_str_eq(return_value->as.identifier, "sum");
 
     /* Second function: greet */
     ASTNode *func2 = func1->next;

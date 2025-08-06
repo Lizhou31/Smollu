@@ -20,6 +20,7 @@ Test(lexer, basic_syntax) {
                          "foo(1, 2);\n"
                          "while (x < 10) { x = x + 1; }\n"
                          "if (x == 10) { x = x + 1; } else { x = x + 1; }\n"
+                         "return 1;\n"
                          "}";
                          
     Lexer lex; lexer_init(&lex, source);
@@ -85,6 +86,11 @@ Test(lexer, basic_syntax) {
     tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 1); token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
     tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);
+
+    tok = lexer_next(&lex); expect_type(tok, TOK_KW_RETURN);                            token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_INT_LITERAL);  cr_assert_eq(tok.value.int_val, 1); token_free(&tok);
+    tok = lexer_next(&lex); expect_type(tok, TOK_SEMICOLON);                            token_free(&tok);
+
     tok = lexer_next(&lex); expect_type(tok, TOK_RBRACE);
     tok = lexer_next(&lex); expect_type(tok, TOK_EOF);                                  token_free(&tok);
 

@@ -38,6 +38,7 @@ typedef enum {
     TOK_KW_NATIVE,
     TOK_KW_FUNCTION,
     TOK_KW_FUNCTIONS,
+    TOK_KW_RETURN,
     TOK_KW_INIT,
     TOK_KW_MAIN,
     TOK_KW_LOCAL,
@@ -142,6 +143,7 @@ typedef enum {
     AST_FUNCTION_CALL,
     AST_NATIVE_CALL,
     AST_FUNCTION_DEF,
+    AST_RETURN,
     AST_PARAMETER_LIST
 } NodeType;
 
@@ -181,6 +183,9 @@ struct ASTNode {
             ASTNode *main;      /* AST_BLOCK */
             ASTNode *functions; /* AST_BLOCK containing function definitions */
         } program;
+        struct {               /* Return statement */
+            ASTNode *value;    /* expression */
+        } return_stmt;
         struct {                /* If statement */
             ASTNode *condition; /* AST_BINARY */
             ASTNode *then_body; /* AST_BLOCK */
