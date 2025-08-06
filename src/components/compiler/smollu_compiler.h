@@ -189,7 +189,7 @@ struct ASTNode {
         struct {                /* If statement */
             ASTNode *condition; /* AST_BINARY */
             ASTNode *then_body; /* AST_BLOCK */
-            ASTNode *else_body; /* NULL or AST_BLOCK */
+            ASTNode *else_body; /* NULL or AST_BLOCK or AST_IF */
         } if_stmt;
         struct {               /* Block */
             ASTNode *stmts;    /* linked-list of statements */
