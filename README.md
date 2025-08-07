@@ -1,38 +1,65 @@
-# Smollu - A small script language interpreter and vm 
+# Smollu - A small script language compiler and vm 
 
-A lightweight custom script language interpreter and VM implementation, written in pure C, that can run on embedded systems. 
+A lightweight custom script language compiler and VM implementation, written in pure C, that can run on embedded systems. 
 
 This project aims to build a small script language for my own use and learning.
 
 ## Features
 
-- [ ] Support for basic arithmetic operations
-- [ ] Support for basic array operations
-- [ ] Support for basic function operations
-- [ ] Support for basic loop operations
-- [ ] Support for basic conditional operations
-- [ ] Support for system calls
+- [x] Support for basic arithmetic operations
+- [x] Support for basic array operations
+- [x] Support for basic function operations
+- [x] Support for basic loop operations
+- [x] Support for basic conditional operations
+- [x] Support for system calls (native functions)
 
 ## Support platform
 
-- [ ] PC (Windows, Linux, MacOS)
+- [x] PC (Windows, Linux, MacOS)
 - [ ] Zephyr RTOS
+
+## Build
+
+```bash
+mkdir build && cd build
+cmake ..
+cmake --build .
+```
+
+## Run Demo
+
+First, compile the demo code:
+
+```bash
+cd build/demo/Simple\ demo
+./smollu_compiler demo.smol -o demo.smolbc
+```
+
+Then, run the demo:
+```bash
+# Under build/demo/Simple\ demo
+./smollu_demo
+```
 
 ## Doc
 
 - [x] Language Spec
-- [ ] Instruction Set
+- [x] Instruction Set
+- [x] Bytecode format
 
 ## Project structure
 
 ```
 smollu/
-├── src/            # Source code
+├── cmake/           # CMake files
+├── demo/            # Demo code
+    └── Simple demo/     # Simple demo code
+├── src/             # Source code (C)
     ├── components/      # Components
         ├── compiler/    # Compiler
         └── vm/          # VM and interpreter
     └── smollu.h       # Public header file
-├── test/           # Test code
-└── doc/            # Documentation
+├── test/            # Test code
+└── doc/             # Documentation
 
 ```
