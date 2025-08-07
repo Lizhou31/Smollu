@@ -10,14 +10,14 @@ main {
     x = x + 1; 
     native print(x);
   }
-  if (x < 5) { x = x + 1; } elif (x < 8) { x = x + 2; } else { x = x - 1; native print(x);}
+  if (x < 5) { x = x + 1; } elif (x > 8 && x < 11) { x = x + 2; } else { x = x - 1; native print(x);}
   local result = add(x, y);
   native print(result);
-  
 }
 functions {
   function add(a, b) {
     local sum = a + b;
     x = sum;
+    return sum;
   }
 }

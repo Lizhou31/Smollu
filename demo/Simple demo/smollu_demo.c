@@ -4,7 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "demo_bytecode.h"
+#define SMOLLU_NATIVE_IMPLEMENTATIONS_AVAILABLE
+#include "smollu_native_tables.h"
 #define SMOLLU_INTERPRETER_MAIN
 
 /* ────────────────────────────────────────────────────────────────────────── */
@@ -12,7 +13,7 @@
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /* Native #0  : print (variadic) */
-static Value nat_print(Value *args, uint8_t argc) {
+Value nat_print(Value *args, uint8_t argc) {
     for (uint8_t i = 0; i < argc; ++i) {
         Value v = args[i];
         switch (v.type) {
@@ -28,30 +29,94 @@ static Value nat_print(Value *args, uint8_t argc) {
 }
 
 /* Native #1  : random int in range [0, arg0) */
-static Value nat_rand(Value *args, uint8_t argc) {
+Value nat_rand(Value *args, uint8_t argc) {
     (void)argc;
     if (argc == 0 || args[0].type != VAL_INT) return value_from_int(0);
     int limit = args[0].as.i;
     return value_from_int(rand() % (limit ? limit : 1));
 }
 
-/* Device-specific native table */
-static const NativeFn device_native_table[] = { nat_print, nat_rand };
-
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Public helper                                                             */
 /* ────────────────────────────────────────────────────────────────────────── */
 
 int smollu_interpreter_run(void) {
+
+    /* Load bytecode from file */
+    const char *filename = "demo.smolbc";
+    FILE *fp = fopen(filename, "rb");
+    if (!fp) {
+        fprintf(stderr, "[VM] Failed to open bytecode file %s\n", filename);
+        return -1;
+    }
+
+    /* Determine file size */
+    if (fseek(fp, 0, SEEK_END) != 0) {
+        fprintf(stderr, "[VM] fseek failed\n");
+        fclose(fp);
+        return -1;
+    }
+    long fsize = ftell(fp);
+    if (fsize <= 0) {
+        fprintf(stderr, "[VM] Bytecode file is empty or ftell failed\n");
+        fclose(fp);
+        return -1;
+    }
+    rewind(fp);
+
+    /* Read entire file into memory */
+    uint8_t *buffer = (uint8_t *)malloc((size_t)fsize);
+    if (!buffer) {
+        fprintf(stderr, "[VM] Out of memory allocating %ld bytes\n", fsize);
+        fclose(fp);
+        return -1;
+    }
+    if (fread(buffer, 1, (size_t)fsize, fp) != (size_t)fsize) {
+        fprintf(stderr, "[VM] Failed to read bytecode file\n");
+        free(buffer);
+        fclose(fp);
+        return -1;
+    }
+    fclose(fp);
+
+    /* Sanity check header size */
+    if ((size_t)fsize < 16) {
+        fprintf(stderr, "[VM] Invalid bytecode file (too small)\n");
+        free(buffer);
+        return -1;
+    }
+
+    /* Read native function table */
+    uint8_t device_id    = buffer[5];
+    uint8_t native_count = buffer[6];
+    const DeviceNativeTable *dtable = smollu_get_device_native_table(device_id);
+    if (!dtable) {
+        fprintf(stderr, "[VM] Unknown device id 0x%02X\n", device_id);
+        free(buffer);
+        return -1;
+    }
+
+    /* Initialize VM */
     SmolluVM vm;
     smollu_vm_init(&vm);
 
-    /* Read header and register native functions according to the image */
-    smollu_vm_prepare(&vm, demo_header_and_table, device_native_table);
+    /* Prepare VM with header & native function table */
+    smollu_vm_prepare(&vm, buffer, dtable->table);
 
-    /* Load the code section */
-    smollu_vm_load(&vm, demo_code, demo_code_len);
+    /* Calculate code section offset and length */
+    size_t code_offset = 16u + (size_t)native_count * 2u;
+    if ((size_t)fsize < code_offset) {
+        fprintf(stderr, "[VM] Invalid bytecode file (truncated native table)\n");
+        free(buffer);
+        return -1;
+    }
+    const uint8_t *code_ptr = buffer + code_offset;
+    size_t code_len = (size_t)fsize - code_offset;
 
+    /* Load code section */
+    smollu_vm_load(&vm, code_ptr, code_len);
+
+    /* Run program */
     int rc = smollu_vm_run(&vm);
     if (rc == 0) {
         printf("[VM] Program terminated normally.\n");
@@ -60,6 +125,7 @@ int smollu_interpreter_run(void) {
     }
 
     smollu_vm_destroy(&vm);
+    free(buffer);
     return rc;
 }
 
