@@ -88,7 +88,7 @@ int smollu_interpreter_run(void) {
 
     /* Read native function table */
     uint8_t device_id    = buffer[5];
-    uint8_t native_count = buffer[6];
+    uint8_t native_count = buffer[7];
     const DeviceNativeTable *dtable = smollu_get_device_native_table(device_id);
     if (!dtable) {
         fprintf(stderr, "[VM] Unknown device id 0x%02X\n", device_id);

@@ -546,11 +546,11 @@ Test(vm, prepare_and_native_table) {
         /* Header */
         'S','M','O','L',       /* magic */
         0x01,                  /* version */
+        0x00,                  /* function_count (unused/padding) */
         0x00,                  /* device_id */
         0x01,                  /* native_count */
         0x08,0x00,0x00,0x00,   /* code_size */
         0x00,0x00,0x00,0x00,   /* reserved */
-        0x00,                  /* function_count (unused/padding) */
         /* Native table (1 entry -> index 0) */
         0x00,0x00,
         /* Code section */

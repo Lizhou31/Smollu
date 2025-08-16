@@ -45,7 +45,6 @@ static inline int16_t read_i16(SmolluVM *vm) {
     return (int16_t)read_u16(vm);
 }
 
-static inline uint32_t clamp_u8(int n) { return (uint32_t)(n & 0xFF); }
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Opcode definitions                                                        */
@@ -166,9 +165,9 @@ static void smollu_vm_read_header(SmolluVM *vm, const uint8_t *bytecode) {
     vm->magic = bytecode[0] | (bytecode[1] << 8) | (bytecode[2] << 16) | (bytecode[3] << 24);
     vm->version = bytecode[4];
     vm->device_id = bytecode[5];
-    vm->native_count = bytecode[6];
-    vm->code_size = bytecode[7] | (bytecode[8] << 8) | (bytecode[9] << 16) | (bytecode[10] << 24);
-    vm->reserved = bytecode[11] | (bytecode[12] << 8) | (bytecode[13] << 16) | (bytecode[14] << 24);
+    vm->native_count = bytecode[7];
+    vm->code_size = bytecode[8] | (bytecode[9] << 8) | (bytecode[10] << 16) | (bytecode[11] << 24);
+    vm->reserved = bytecode[12] | (bytecode[13] << 8) | (bytecode[14] << 16) | (bytecode[15] << 24);
 }
 
 static void smollu_vm_read_native_table(SmolluVM *vm, const uint8_t *bytecode, const NativeFn *native_table) {
@@ -195,7 +194,9 @@ void smollu_vm_init(SmolluVM *vm) {
 
 void smollu_vm_prepare(SmolluVM *vm, const uint8_t *bytecode, const NativeFn *native_table) {
     smollu_vm_read_header(vm, bytecode);
-    smollu_vm_read_native_table(vm, bytecode + 16, native_table);
+    if (native_table) {
+        smollu_vm_read_native_table(vm, bytecode + 16, native_table);
+    }
 }
 
 void smollu_vm_load(SmolluVM *vm, const uint8_t *bytecode, size_t len) {
