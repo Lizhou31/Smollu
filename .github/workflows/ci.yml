@@ -1,27 +1,62 @@
-name: CMake CI
+name: CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ master, main, develop ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ master, main, develop ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  # Unified Build & Test (C + Rust)
+  build-test:
+    name: Build & Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        preset: [debug, release]
+        include:
+          - os: ubuntu-latest
+            install-deps: sudo apt-get update && sudo apt-get install -y libcriterion-dev cmake pkg-config build-essential
     steps:
-      - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y build-essential cmake pkg-config libcriterion-dev
+    - name: Install Dependencies
+      run: ${{ matrix.install-deps }}
 
-      - name: Configure with CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        components: rustfmt, clippy
 
-      - name: Build
-        run: cmake --build build --parallel
+    - name: Configure CMake
+      run: cmake --preset=${{ matrix.preset }}
 
-      - name: Run tests
-        run: ctest --test-dir build --output-on-failure 
+    - name: Build Everything (C + Rust)
+      run: cmake --build build
+
+    - name: Run All Tests (C + Rust)
+      working-directory: build
+      run: ctest --verbose --output-on-failure
+
+    - name: Test Demo
+      working-directory: build/demo/Simple\ demo
+      run: |
+        ./smollu_compiler demo.smol -o demo.smolbc
+        ./smollu_demo
+
+    - name: Test Emulator with Demo Bytecode
+      run: |
+        if [[ "${{ matrix.preset }}" == "release" ]]; then
+          ./emulator/target/release/smollu-emulator "build/demo/Simple demo/demo.smolbc"
+        else
+          ./emulator/target/debug/smollu-emulator "build/demo/Simple demo/demo.smolbc"
+        fi
+
+    - name: Clippy Check
+      working-directory: emulator
+      run: cargo clippy -- -D warnings
+
+    - name: Format Check
+      working-directory: emulator
+      run: cargo fmt -- --check
