@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <string.h>
 
-#include "../src/components/compiler/smollu_compiler.h"
+#include "../smollu_compiler.h"
 
 /* Helper assertions */
 static void expect_node_type(ASTNode *node, NodeType t, const char *ctx) {

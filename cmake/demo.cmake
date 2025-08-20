@@ -4,8 +4,8 @@ add_executable(smollu_demo
     "demo/Simple demo/smollu_demo.c"
 )
 target_include_directories(smollu_demo PUBLIC
-    src/components/vm
-    src/components/compiler
+    vm
+    compiler
     "demo/Simple demo"
 )
 target_link_libraries(smollu_demo PUBLIC smollu_vm)
@@ -24,7 +24,9 @@ add_custom_command(TARGET smollu_demo POST_BUILD
     COMMENT "Copying smollu_demo to demo directory"
 )
 
-add_custom_command(TARGET smollu_compiler POST_BUILD
+# Create a custom target to copy compiler after it's built
+add_custom_target(copy_compiler_to_demo ALL
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:smollu_compiler> ${CMAKE_BINARY_DIR}/demo/Simple\ demo/
     COMMENT "Copying smollu_compiler to demo directory"
+    DEPENDS smollu_compiler
 )

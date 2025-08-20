@@ -8,9 +8,9 @@ fn main() {
     // Parent directory should be the Smollu root
     let smollu_root = current_dir.parent().expect("Failed to get parent directory");
     
-    // Paths to the original C source files
-    let vm_src = smollu_root.join("src/components/vm/smollu_vm.c");
-    let compiler_src = smollu_root.join("src/components/compiler");
+    // Paths to the C source files (updated for new structure)
+    let vm_src = smollu_root.join("vm/smollu_vm.c");
+    let compiler_src = smollu_root.join("compiler");
     
     // Tell cargo to watch for changes in these files
     println!("cargo:rerun-if-changed={}", vm_src.display());
@@ -22,8 +22,8 @@ fn main() {
     cc::Build::new()
         .file(vm_src)
         .file("c_integration/wrapper.c")
-        .include(smollu_root.join("src/components/vm"))
-        .include(smollu_root.join("src/components/compiler"))
+        .include(smollu_root.join("vm"))
+        .include(smollu_root.join("compiler"))
         .include("c_integration")
         .compile("smollu_vm");
     
@@ -31,9 +31,9 @@ fn main() {
     let bindings = bindgen::Builder::default()
         // Header file to generate bindings for
         .header("c_integration/wrapper.h")
-        // Include paths
-        .clang_arg(format!("-I{}", smollu_root.join("src/components/vm").display()))
-        .clang_arg(format!("-I{}", smollu_root.join("src/components/compiler").display()))
+        // Include paths (updated for new structure)
+        .clang_arg(format!("-I{}", smollu_root.join("vm").display()))
+        .clang_arg(format!("-I{}", smollu_root.join("compiler").display()))
         .clang_arg("-Ic_integration")
         // Generate bindings for these functions and types
         .allowlist_function("smollu_.*")

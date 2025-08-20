@@ -1,6 +1,6 @@
 #include <criterion/criterion.h>
 #include <stdint.h>
-#include "../src/components/vm/smollu_vm.h"
+#include "../smollu_vm.h"
 
 /* ────────────────────────────────────────────────────────────────────────── */
 /*  Byte-code opcode constants (duplicated from smollu_vm.c for testing)     */

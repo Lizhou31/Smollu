@@ -1,8 +1,4 @@
 # Virtual Machine components
 
-# Add Smollu VM library
-add_library(smollu_vm STATIC src/components/vm/smollu_vm.c)
-
-target_include_directories(smollu_vm PUBLIC
-    src/components/vm
-)
+# Include VM subdirectory - this will build the VM library and tests
+add_subdirectory(vm)

@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "../src/components/compiler/smollu_compiler.h"
+#include "../smollu_compiler.h"
 
 /* ──────────────────────────────────────────────────────────────────────────── */
 /*  Bytecode opcode constants (duplicated for testing)                         */

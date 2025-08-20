@@ -1,7 +1,7 @@
 #include <criterion/criterion.h>
 #include <string.h>
 
-#include "../src/components/compiler/smollu_compiler.h"
+#include "../smollu_compiler.h"
 
 /* Helper wrappers to make assertions concise */
 static void expect_type(Token tok, TokenType expected) {
