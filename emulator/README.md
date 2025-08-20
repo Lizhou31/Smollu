@@ -16,8 +16,6 @@ The Smollu Emulator is designed to provide a modern development environment for 
 - ✅ **Phase 1 Complete**: Core C VM Integration
 - 🚧 **Phase 2 Planned**: Basic GUI Framework
 - 📋 **Phase 3 Planned**: Hardware Simulation
-- 📋 **Phase 4 Planned**: Advanced Features
-- 📋 **Phase 5 Planned**: Polish & Examples
 
 ## Quick Start
 
@@ -30,25 +28,20 @@ The Smollu Emulator is designed to provide a modern development environment for 
 
 ### Building
 
-1. **Build the C VM first** (from project root):
-   ```bash
-   cd ..
-   mkdir build && cd build
-   cmake .. -DBUILD_TESTS=OFF
-   cmake --build .
-   ```
+The emulator is now integrated into the main project's unified build system. You can build everything with a single command:
 
-2. **Create demo bytecode**:
-   ```bash
-   cd "demo/Simple demo"
-   ./smollu_compiler demo.smol -o demo.smolbc
-   ```
+**Unified Build (Recommended)**:
+```bash
+# From project root - builds C VM, compiler, and Rust emulator
+cmake --preset=default
+cmake --build build
+```
 
-3. **Build the emulator**:
-   ```bash
-   cd ../../emulator
-   cargo build
-   ```
+**Manual Build** (if you need just the emulator):
+```bash
+# From emulator directory
+cargo build
+```
 
 ### Running
 
@@ -222,47 +215,3 @@ sudo apt install cmake
 - VM might be failing silently
 - Check VM execution with `RUST_LOG=debug`
 - Verify bytecode is compatible
-
-## Roadmap
-
-### Phase 2: GUI Framework (Planned)
-- egui integration for immediate-mode GUI
-- Basic application window with file loading
-- Console output widget for VM output
-- VM execution controls (play/pause/reset)
-
-### Phase 3: Hardware Simulation (Planned)
-- LED matrix simulation (8x8 default, configurable)
-- GPIO pin visualization and control
-- Native functions for hardware interaction
-- Real-time state updates
-
-### Phase 4: Advanced Features (Planned)
-- Breakpoint debugging and step execution
-- Performance profiling and optimization hints
-- Sensor simulation with GUI controls
-- Advanced VM state inspection
-
-### Phase 5: Polish & Examples (Planned)
-- Example Smollu programs for hardware simulation
-- Configuration save/load functionality
-- Documentation and tutorials
-- Export/sharing features
-
-## Contributing
-
-1. Follow Rust coding conventions
-2. Add tests for new features
-3. Update documentation
-4. Ensure C integration remains safe
-
-## License
-
-MIT License - see parent project for details.
-
-## Links
-
-- [Parent Smollu Project](../)
-- [Emulator Design Plan](../PLAN.md)
-- [Language Specification](../doc/Language%20Spec.md)
-- [Instruction Set](../doc/Instruction%20Set.md)
