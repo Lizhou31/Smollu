@@ -2,14 +2,14 @@ use smollu_emulator::{SmolluEmulator, Value};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Smollu Emulator Basic Test ===\n");
-    
+
     // Create a new emulator instance
     let mut emulator = SmolluEmulator::new()?;
     println!("✓ Created emulator instance");
-    
+
     // Test 1: Load the demo bytecode file
     let demo_bytecode_path = "../build/demo/Simple demo/demo.smolbc";
-    
+
     match emulator.load_bytecode_file(demo_bytecode_path) {
         Ok(()) => {
             println!("✓ Loaded bytecode from: {}", demo_bytecode_path);
@@ -25,11 +25,14 @@ fn main() -> anyhow::Result<()> {
             return Ok(());
         }
     }
-    
+
     // Test 2: Check initial VM state
     let initial_state = emulator.get_vm_state();
-    println!("✓ Initial VM state - PC: {}, Stack: {}", initial_state.pc, initial_state.sp);
-    
+    println!(
+        "✓ Initial VM state - PC: {}, Stack: {}",
+        initial_state.pc, initial_state.sp
+    );
+
     // Test 3: Run the program
     println!("\n--- Running VM ---");
     match emulator.run() {
@@ -44,7 +47,7 @@ fn main() -> anyhow::Result<()> {
             return Err(e.into());
         }
     }
-    
+
     // Test 4: Check captured output
     let output_history = emulator.get_output_history();
     if !output_history.is_empty() {
@@ -52,11 +55,14 @@ fn main() -> anyhow::Result<()> {
         for (i, output) in output_history.iter().enumerate() {
             println!("[{}] {}", i + 1, output);
         }
-        println!("✓ Successfully captured {} output line(s)", output_history.len());
+        println!(
+            "✓ Successfully captured {} output line(s)",
+            output_history.len()
+        );
     } else {
         println!("⚠ No output captured");
     }
-    
+
     // Test 5: Check final VM state
     let final_state = emulator.get_vm_state();
     println!("\n--- Final VM State ---");
@@ -65,7 +71,7 @@ fn main() -> anyhow::Result<()> {
     if let Some(top_value) = final_state.stack_top {
         println!("Stack top: {}", top_value);
     }
-    
+
     // Test 6: Test global variable access
     println!("\n--- Global Variables ---");
     for slot in 0..5 {
@@ -75,14 +81,20 @@ fn main() -> anyhow::Result<()> {
             _ => println!("Global[{}] = {}", slot, global_value),
         }
     }
-    
+
     // Test 7: Reset and verify
     println!("\n--- Reset Test ---");
     emulator.reset();
     let reset_state = emulator.get_vm_state();
-    println!("✓ VM reset - PC: {}, Stack: {}", reset_state.pc, reset_state.sp);
-    println!("✓ Output history cleared: {} lines", emulator.get_output_history().len());
-    
+    println!(
+        "✓ VM reset - PC: {}, Stack: {}",
+        reset_state.pc, reset_state.sp
+    );
+    println!(
+        "✓ Output history cleared: {} lines",
+        emulator.get_output_history().len()
+    );
+
     println!("\n=== All Tests Completed Successfully ===");
     Ok(())
 }

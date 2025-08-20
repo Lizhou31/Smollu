@@ -4,15 +4,15 @@ use std::process;
 
 fn main() {
     env_logger::init();
-    
+
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         eprintln!("Usage: {} <bytecode_file>", args[0]);
         process::exit(1);
     }
-    
+
     let bytecode_file = &args[1];
-    
+
     // Create emulator and load bytecode
     let mut emulator = match SmolluEmulator::new() {
         Ok(emu) => emu,
@@ -21,24 +21,27 @@ fn main() {
             process::exit(1);
         }
     };
-    
+
     if let Err(e) = emulator.load_bytecode_file(bytecode_file) {
         eprintln!("Failed to load bytecode file '{}': {}", bytecode_file, e);
         process::exit(1);
     }
-    
+
     println!("Loaded bytecode from: {}", bytecode_file);
     println!("Starting VM execution...\n");
-    
+
     // Debug: check initial VM state
     let initial_state = emulator.get_vm_state();
-    println!("Initial state - PC: {}, SP: {}", initial_state.pc, initial_state.sp);
-    
+    println!(
+        "Initial state - PC: {}, SP: {}",
+        initial_state.pc, initial_state.sp
+    );
+
     // Run the VM
     match emulator.run() {
         Ok(exit_code) => {
             println!("\nVM execution completed with exit code: {}", exit_code);
-            
+
             // Display any captured output
             let output_history = emulator.get_output_history();
             if !output_history.is_empty() {
@@ -47,7 +50,7 @@ fn main() {
                     println!("[{}] {}", i + 1, output);
                 }
             }
-            
+
             // Display final VM state
             let state = emulator.get_vm_state();
             println!("\nFinal VM state:");

@@ -1,5 +1,5 @@
 //! Raw C bindings for the Smollu VM
-//! 
+//!
 //! This module contains automatically generated bindings from bindgen.
 //! Use the wrapper module for safe, idiomatic Rust interfaces.
 

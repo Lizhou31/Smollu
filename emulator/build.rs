@@ -4,20 +4,22 @@ use std::path::PathBuf;
 fn main() {
     // Get the directory where this build script is located (emulator/)
     let current_dir = env::current_dir().expect("Failed to get current directory");
-    
+
     // Parent directory should be the Smollu root
-    let smollu_root = current_dir.parent().expect("Failed to get parent directory");
-    
+    let smollu_root = current_dir
+        .parent()
+        .expect("Failed to get parent directory");
+
     // Paths to the C source files (updated for new structure)
     let vm_src = smollu_root.join("vm/smollu_vm.c");
     let compiler_src = smollu_root.join("compiler");
-    
+
     // Tell cargo to watch for changes in these files
     println!("cargo:rerun-if-changed={}", vm_src.display());
     println!("cargo:rerun-if-changed={}", compiler_src.display());
     println!("cargo:rerun-if-changed=c_integration/wrapper.c");
     println!("cargo:rerun-if-changed=c_integration/wrapper.h");
-    
+
     // Compile the C VM and wrapper code
     cc::Build::new()
         .file(vm_src)
@@ -26,7 +28,7 @@ fn main() {
         .include(smollu_root.join("compiler"))
         .include("c_integration")
         .compile("smollu_vm");
-    
+
     // Generate bindings using bindgen
     let bindings = bindgen::Builder::default()
         // Header file to generate bindings for
@@ -48,7 +50,7 @@ fn main() {
         .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .generate()
         .expect("Unable to generate bindings");
-    
+
     // Write the bindings to the output file
     let out_path = PathBuf::from(env::var("OUT_DIR").unwrap());
     bindings
