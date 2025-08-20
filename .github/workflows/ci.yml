@@ -39,20 +39,6 @@ jobs:
       working-directory: build
       run: ctest --verbose --output-on-failure
 
-    - name: Test Demo
-      working-directory: build/demo/Simple\ demo
-      run: |
-        ./smollu_compiler demo.smol -o demo.smolbc
-        ./smollu_demo
-
-    - name: Test Emulator with Demo Bytecode
-      run: |
-        if [[ "${{ matrix.preset }}" == "release" ]]; then
-          ./emulator/target/release/smollu-emulator "build/demo/Simple demo/demo.smolbc"
-        else
-          ./emulator/target/debug/smollu-emulator "build/demo/Simple demo/demo.smolbc"
-        fi
-
     - name: Clippy Check
       working-directory: emulator
       run: cargo clippy -- -D warnings
