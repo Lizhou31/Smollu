@@ -14,6 +14,9 @@
 
 static char print_output_buffer[4096] = {0};
 static size_t print_output_length = 0;
+static char all_print_output[8192] = {0};
+static size_t all_output_length = 0;
+static OutputCallback output_callback = NULL;
 
 /* ──────────────────────────────────────────────────────────────────────────── */
 /*  VM Lifecycle Management                                                     */
@@ -201,11 +204,11 @@ float wrapper_value_as_float(Value val) {
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 Value emulator_native_print(Value* args, uint8_t argc) {
-    // Clear previous output
+    // Clear current output line buffer
     print_output_length = 0;
     print_output_buffer[0] = '\0';
     
-    // Format output into buffer
+    // Format output into current line buffer
     for (uint8_t i = 0; i < argc; ++i) {
         Value v = args[i];
         char temp[64];
@@ -233,7 +236,7 @@ Value emulator_native_print(Value* args, uint8_t argc) {
                 break;
         }
         
-        // Append to output buffer if there's space
+        // Append to current line buffer if there's space
         if (print_output_length + temp_len + 1 < sizeof(print_output_buffer)) {
             if (i > 0) {
                 print_output_buffer[print_output_length++] = ' ';
@@ -244,17 +247,42 @@ Value emulator_native_print(Value* args, uint8_t argc) {
         }
     }
     
+    // Append this line to the accumulated output buffer
+    if (all_output_length + print_output_length + 2 < sizeof(all_print_output)) {
+        if (all_output_length > 0) {
+            all_print_output[all_output_length++] = '\n';
+        }
+        memcpy(all_print_output + all_output_length, print_output_buffer, print_output_length);
+        all_output_length += print_output_length;
+        all_print_output[all_output_length] = '\0';
+    }
+    
     // Also print to console for debugging
     printf("%s\n", print_output_buffer);
     
+    // Call the callback if one is registered (for real-time GUI updates)
+    if (output_callback) {
+        output_callback(print_output_buffer);
+    }
+    
     return value_make_nil();
+}
+
+void wrapper_set_output_callback(OutputCallback callback) {
+    output_callback = callback;
 }
 
 const char* wrapper_get_last_print_output(void) {
     return print_output_length > 0 ? print_output_buffer : NULL;
 }
 
+const char* wrapper_get_all_print_output(void) {
+    return all_output_length > 0 ? all_print_output : NULL;
+}
+
 void wrapper_clear_print_output(void) {
     print_output_length = 0;
     print_output_buffer[0] = '\0';
+    all_output_length = 0;
+    all_print_output[0] = '\0';
 }

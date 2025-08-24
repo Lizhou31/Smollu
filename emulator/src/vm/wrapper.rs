@@ -7,6 +7,7 @@ use crate::vm::bindings::*;
 use anyhow::Result;
 use std::ffi::CStr;
 use std::ptr;
+use std::sync::mpsc;
 
 /// Error types for VM operations
 #[derive(Debug, thiserror::Error)]
@@ -114,6 +115,28 @@ impl SmolluVM {
         }
     }
 
+    /// Get all accumulated print output
+    pub fn get_all_print_output(&self) -> Option<String> {
+        let output_ptr = unsafe { wrapper_get_all_print_output() };
+        if output_ptr.is_null() {
+            None
+        } else {
+            unsafe {
+                let c_str = CStr::from_ptr(output_ptr);
+                c_str.to_str().ok().map(|s| s.to_string())
+            }
+        }
+    }
+
+    /// Set a callback function to receive real-time output
+    pub fn set_output_callback(&self, sender: mpsc::Sender<String>) {
+        // We need to store the sender somehow and create a C callback
+        // For now, let's use a simplified approach with a global sender
+        unsafe {
+            set_rust_output_callback(sender);
+        }
+    }
+
     /// Clear the print output buffer
     pub fn clear_print_output(&self) {
         unsafe { wrapper_clear_print_output() };
@@ -205,4 +228,38 @@ impl std::fmt::Display for Value {
             Value::Float(fl) => write!(f, "{}", fl),
         }
     }
+}
+
+// Global callback mechanism for real-time output
+use std::sync::{Mutex, OnceLock};
+
+static GLOBAL_OUTPUT_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLock::new();
+
+/// C callback function that will be called from the C wrapper
+extern "C" fn rust_output_callback(output: *const std::os::raw::c_char) {
+    if output.is_null() {
+        return;
+    }
+    
+    let output_str = unsafe {
+        CStr::from_ptr(output).to_str().unwrap_or("<invalid utf8>")
+    };
+    
+    let sender_mutex = GLOBAL_OUTPUT_SENDER.get_or_init(|| Mutex::new(None));
+    if let Ok(sender_guard) = sender_mutex.lock() {
+        if let Some(ref sender) = *sender_guard {
+            let _ = sender.send(output_str.to_string());
+        }
+    }
+}
+
+/// Set the Rust callback for output (called from Rust)
+unsafe fn set_rust_output_callback(sender: mpsc::Sender<String>) {
+    let sender_mutex = GLOBAL_OUTPUT_SENDER.get_or_init(|| Mutex::new(None));
+    if let Ok(mut sender_guard) = sender_mutex.lock() {
+        *sender_guard = Some(sender);
+    }
+    
+    // Register the C callback
+    wrapper_set_output_callback(Some(rust_output_callback));
 }

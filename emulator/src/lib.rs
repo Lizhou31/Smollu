@@ -5,8 +5,10 @@
 //! emulator-specific features like hardware simulation and debugging tools.
 
 pub mod vm;
+pub mod gui;
 
 pub use vm::{SmolluVM, Value, ValueType, VmError};
+pub use gui::SmolluEmulatorApp;
 
 use anyhow::Result;
 use std::fs;
@@ -96,6 +98,16 @@ impl SmolluEmulator {
     /// Clear the output history
     pub fn clear_output_history(&mut self) {
         self.output_history.clear();
+    }
+
+    /// Set a callback for real-time output during VM execution
+    pub fn set_output_callback(&self, sender: std::sync::mpsc::Sender<String>) {
+        self.vm.set_output_callback(sender);
+    }
+
+    /// Get all accumulated print output from the VM
+    pub fn get_all_print_output(&self) -> Option<String> {
+        self.vm.get_all_print_output()
     }
 }
 

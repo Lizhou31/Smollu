@@ -217,10 +217,28 @@ float wrapper_value_as_float(Value val);
 Value emulator_native_print(Value* args, uint8_t argc);
 
 /**
+ * Callback function type for real-time output notifications
+ * @param output The output string that was printed
+ */
+typedef void (*OutputCallback)(const char* output);
+
+/**
+ * Set a callback function to be called whenever native_print is executed
+ * @param callback Function to call with print output, or NULL to disable
+ */
+void wrapper_set_output_callback(OutputCallback callback);
+
+/**
  * Get the last printed message (for GUI display)
  * @return Pointer to null-terminated string, or NULL if no output
  */
 const char* wrapper_get_last_print_output(void);
+
+/**
+ * Get all accumulated print output (multiple calls)
+ * @return Pointer to null-terminated string with all output, or NULL if no output
+ */
+const char* wrapper_get_all_print_output(void);
 
 /**
  * Clear the print output buffer

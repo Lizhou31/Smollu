@@ -7,14 +7,15 @@ A Rust-based emulator for the Smollu VM with GUI capabilities for hardware simul
 The Smollu Emulator is designed to provide a modern development environment for Smollu programs with:
 
 - **Safe Rust Integration**: FFI bindings over the C VM with memory safety
-- **Hardware Simulation**: Virtual LED matrices, GPIO pins, and sensors (planned)
-- **GUI Interface**: Real-time visualization and debugging tools (planned)
+- **Modern GUI Interface**: Real-time visualization with egui framework
+- **Dual Mode Operation**: Both GUI and CLI interfaces available
 - **Enhanced Debugging**: VM state inspection and execution control
+- **Hardware Simulation**: Virtual LED matrices, GPIO pins, and sensors (planned)
 
 ## Project Status
 
 - ✅ **Phase 1 Complete**: Core C VM Integration
-- 🚧 **Phase 2 Planned**: Basic GUI Framework
+- ✅ **Phase 2 Complete**: Basic GUI Framework with file loading and console output
 - 📋 **Phase 3 Planned**: Hardware Simulation
 
 ## Quick Start
@@ -45,21 +46,25 @@ cargo build
 
 ### Running
 
-Run the emulator with a bytecode file:
-
+**GUI Mode (Default)**:
 ```bash
-cargo run -- "../build/demo/Simple demo/demo.smolbc"
+# Launch GUI without file
+cargo run
+
+# Launch GUI with file pre-loaded
+cargo run "../build/demo/Simple demo/demo.smolbc"
 ```
 
-Run the basic integration test:
-
+**CLI Mode**:
 ```bash
+# Run in console mode
+cargo run -- --cli "../build/demo/Simple demo/demo.smolbc"
+```
+
+**Examples and Tests**:
+```bash
+# Run integration tests
 cargo run --example basic_test
-```
-
-Run the simple debugging test:
-
-```bash
 cargo run --example simple_test
 ```
 
@@ -73,8 +78,15 @@ emulator/
 ├── build.rs                # C integration build script
 ├── README.md               # This file
 ├── src/
-│   ├── main.rs             # Command-line interface
+│   ├── main.rs             # GUI/CLI launcher
 │   ├── lib.rs              # Main library interface
+│   ├── gui/                # GUI framework (Phase 2)
+│   │   ├── mod.rs          # GUI module exports
+│   │   ├── app.rs          # Main GUI application
+│   │   └── widgets/        # GUI components
+│   │       ├── mod.rs      # Widget exports
+│   │       ├── console.rs  # Console output widget
+│   │       └── controls.rs # VM control buttons
 │   └── vm/                 # VM integration layer
 │       ├── mod.rs          # Module exports
 │       ├── bindings.rs     # Generated C bindings
@@ -104,14 +116,47 @@ emulator/
 - **Output Capture**: History tracking for print statements
 - **Debug Interface**: VM state inspection and control
 
-#### 4. **Command-line Interface** (`src/main.rs`)
-- **File Loading**: Bytecode file handling
-- **Execution Control**: Run, debug, and inspect VM state
-- **Output Display**: Formatted results and debugging info
+#### 4. **GUI Framework** (`src/gui/`)
+- **SmolluEmulatorApp**: Main GUI application with eframe integration
+- **Console Widget**: Scrollable output display with auto-scroll
+- **Controls Widget**: File loading, VM execution controls (Load/Run/Reset)
+- **File Management**: Native file dialogs with .smolbc filtering
+
+#### 5. **Dual Mode Interface** (`src/main.rs`)
+- **GUI Mode**: Modern interface with real-time visualization
+- **CLI Mode**: Traditional command-line interface with --cli flag
+- **File Loading**: Support for both modes with identical functionality
 
 ## Usage Examples
 
-### Basic Emulation
+### GUI Mode
+
+The emulator launches in GUI mode by default:
+
+```bash
+# Launch empty GUI
+cargo run
+
+# Load file on startup
+cargo run "../build/demo/Simple demo/demo.smolbc"
+```
+
+**GUI Features:**
+- 📁 **File Loading**: Click "Load" button for native file picker
+- ▶️ **VM Execution**: Run button starts threaded VM execution
+- 🔄 **Reset**: Clear VM state and console output
+- 📜 **Console**: Scrollable output with auto-scroll and clear options
+- ⚡ **Real-time**: Non-blocking execution with live status updates
+
+### CLI Mode
+
+For automated scripts or traditional workflows:
+
+```bash
+cargo run -- --cli "../build/demo/Simple demo/demo.smolbc"
+```
+
+### Programmatic Usage
 
 ```rust
 use smollu_emulator::{SmolluEmulator, Value};
