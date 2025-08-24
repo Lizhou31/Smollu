@@ -92,6 +92,10 @@ impl SmolluEmulatorApp {
         let (output_tx, output_rx) = mpsc::channel();
         emulator_clone.set_output_callback(output_tx);
 
+        // Set up completion callback
+        let (completion_tx, completion_rx) = mpsc::channel();
+        emulator_clone.set_completion_callback(completion_tx);
+
         let execution_tx = tx.clone();
         self.vm_execution_thread = Some(thread::spawn(move || {
             // Start a thread to handle real-time output
@@ -104,21 +108,18 @@ impl SmolluEmulatorApp {
                 }
             });
 
-            // Run the VM
-            match emulator_clone.run() {
-                Ok(exit_code) => {
-                    // Send any remaining accumulated output
-                    /*
-                    if let Some(all_output) = emulator_clone.get_all_print_output() {
-                        for line in all_output.lines() {
-                            if execution_tx.send(ExecutionResult::Output(line.to_string())).is_err() {
-                                break;
-                            }
-                        }
+            // Start a thread to handle completion notifications
+            let completion_execution_tx = execution_tx.clone();
+            let _completion_thread = thread::spawn(move || {
+                while let Ok(exit_code) = completion_rx.recv() {
+                    if completion_execution_tx.send(ExecutionResult::Completed(exit_code)).is_err() {
+                        break;
                     }
-                    */
-                    let _ = execution_tx.send(ExecutionResult::Completed(exit_code));
                 }
+            });
+
+            // Run the VM - completion will be handled by the callback mechanism
+            match emulator_clone.run() {
                 Err(VmError::ExecutionError(code)) => {
                     let _ = execution_tx.send(ExecutionResult::Error(format!(
                         "VM execution failed with error code: {}", code
@@ -128,6 +129,10 @@ impl SmolluEmulatorApp {
                     let _ = execution_tx.send(ExecutionResult::Error(format!(
                         "VM execution failed: {}", e
                     )));
+                }
+                Ok(_) => {
+                    // Success case is now handled by the completion callback
+                    // Don't send completion here - let the callback mechanism handle it
                 }
             }
         }));

@@ -223,10 +223,23 @@ Value emulator_native_print(Value* args, uint8_t argc);
 typedef void (*OutputCallback)(const char* output);
 
 /**
+ * Callback function type for VM execution completion notifications
+ * Called when VM execution truly completes (including all native function calls)
+ * @param exit_code The VM exit code
+ */
+typedef void (*CompletionCallback)(int exit_code);
+
+/**
  * Set a callback function to be called whenever native_print is executed
  * @param callback Function to call with print output, or NULL to disable
  */
 void wrapper_set_output_callback(OutputCallback callback);
+
+/**
+ * Set a callback function to be called when VM execution is truly complete
+ * @param callback Function to call with completion status, or NULL to disable
+ */
+void wrapper_set_completion_callback(CompletionCallback callback);
 
 /**
  * Get the last printed message (for GUI display)

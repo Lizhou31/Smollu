@@ -130,10 +130,15 @@ impl SmolluVM {
 
     /// Set a callback function to receive real-time output
     pub fn set_output_callback(&self, sender: mpsc::Sender<String>) {
-        // We need to store the sender somehow and create a C callback
-        // For now, let's use a simplified approach with a global sender
         unsafe {
             set_rust_output_callback(sender);
+        }
+    }
+
+    /// Set a callback function to receive completion notifications
+    pub fn set_completion_callback(&self, sender: mpsc::Sender<i32>) {
+        unsafe {
+            set_rust_completion_callback(sender);
         }
     }
 
@@ -152,11 +157,10 @@ impl Drop for SmolluVM {
     }
 }
 
-// Make SmolluVM thread-safe by implementing Send and Sync
-// SAFETY: The C VM is designed to be used from a single thread at a time,
-// and our wrapper ensures exclusive access through &mut self for modifications
+// Make SmolluVM thread-safe by implementing Send
+// SAFETY: The C VM is designed to be used from a single thread at a time.
 unsafe impl Send for SmolluVM {}
-unsafe impl Sync for SmolluVM {}
+
 
 /// Rust representation of Smollu values
 #[derive(Debug, Clone, PartialEq)]
@@ -230,12 +234,13 @@ impl std::fmt::Display for Value {
     }
 }
 
-// Global callback mechanism for real-time output
+// Global callback mechanism for real-time output and completion
 use std::sync::{Mutex, OnceLock};
 
 static GLOBAL_OUTPUT_SENDER: OnceLock<Mutex<Option<mpsc::Sender<String>>>> = OnceLock::new();
+static GLOBAL_COMPLETION_SENDER: OnceLock<Mutex<Option<mpsc::Sender<i32>>>> = OnceLock::new();
 
-/// C callback function that will be called from the C wrapper
+/// C callback function that will be called from the C wrapper for output
 extern "C" fn rust_output_callback(output: *const std::os::raw::c_char) {
     if output.is_null() {
         return;
@@ -253,6 +258,16 @@ extern "C" fn rust_output_callback(output: *const std::os::raw::c_char) {
     }
 }
 
+/// C callback function that will be called when VM execution truly completes
+extern "C" fn rust_completion_callback(exit_code: i32) {
+    let sender_mutex = GLOBAL_COMPLETION_SENDER.get_or_init(|| Mutex::new(None));
+    if let Ok(sender_guard) = sender_mutex.lock() {
+        if let Some(ref sender) = *sender_guard {
+            let _ = sender.send(exit_code);
+        }
+    }
+}
+
 /// Set the Rust callback for output (called from Rust)
 unsafe fn set_rust_output_callback(sender: mpsc::Sender<String>) {
     let sender_mutex = GLOBAL_OUTPUT_SENDER.get_or_init(|| Mutex::new(None));
@@ -262,4 +277,15 @@ unsafe fn set_rust_output_callback(sender: mpsc::Sender<String>) {
     
     // Register the C callback
     wrapper_set_output_callback(Some(rust_output_callback));
+}
+
+/// Set the Rust callback for completion (called from Rust)
+unsafe fn set_rust_completion_callback(sender: mpsc::Sender<i32>) {
+    let sender_mutex = GLOBAL_COMPLETION_SENDER.get_or_init(|| Mutex::new(None));
+    if let Ok(mut sender_guard) = sender_mutex.lock() {
+        *sender_guard = Some(sender);
+    }
+    
+    // Register the C callback
+    wrapper_set_completion_callback(Some(rust_completion_callback));
 }

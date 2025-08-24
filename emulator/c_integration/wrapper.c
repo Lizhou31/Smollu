@@ -17,6 +17,10 @@ static size_t print_output_length = 0;
 static char all_print_output[8192] = {0};
 static size_t all_output_length = 0;
 static OutputCallback output_callback = NULL;
+static CompletionCallback completion_callback = NULL;
+static volatile int pending_native_calls = 0;
+static volatile int vm_exit_code = 0;
+static volatile int vm_has_finished = 0;
 
 /* ──────────────────────────────────────────────────────────────────────────── */
 /*  VM Lifecycle Management                                                     */
@@ -73,7 +77,23 @@ int wrapper_vm_run(SmolluVM* vm) {
         return -1;
     }
     
-    return smollu_vm_run(vm);
+    // Reset state for new execution
+    pending_native_calls = 0;
+    vm_has_finished = 0;
+    
+    int result = smollu_vm_run(vm);
+    
+    // Store the exit code and mark VM as finished
+    vm_exit_code = result;
+    vm_has_finished = 1;
+    
+    // If we have a completion callback and no pending native calls, call it immediately
+    // Otherwise, the last native function will call it when it completes
+    if (completion_callback && pending_native_calls == 0) {
+        completion_callback(result);
+    }
+    
+    return result;
 }
 
 void wrapper_vm_reset(SmolluVM* vm) {
@@ -204,6 +224,9 @@ float wrapper_value_as_float(Value val) {
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 Value emulator_native_print(Value* args, uint8_t argc) {
+    // Increment pending native call counter
+    __sync_fetch_and_add(&pending_native_calls, 1);
+    
     // Clear current output line buffer
     print_output_length = 0;
     print_output_buffer[0] = '\0';
@@ -260,9 +283,17 @@ Value emulator_native_print(Value* args, uint8_t argc) {
     // Also print to console for debugging
     printf("%s\n", print_output_buffer);
     
-    // Call the callback if one is registered (for real-time GUI updates)
+    // Call the output callback if one is registered (for real-time GUI updates)
     if (output_callback) {
         output_callback(print_output_buffer);
+    }
+    
+    // Decrement pending native call counter and check if we're done
+    int remaining = __sync_sub_and_fetch(&pending_native_calls, 1);
+    
+    // If this was the last pending native call, VM has finished, and we have a completion callback
+    if (remaining == 0 && vm_has_finished && completion_callback) {
+        completion_callback(vm_exit_code);
     }
     
     return value_make_nil();
@@ -270,6 +301,10 @@ Value emulator_native_print(Value* args, uint8_t argc) {
 
 void wrapper_set_output_callback(OutputCallback callback) {
     output_callback = callback;
+}
+
+void wrapper_set_completion_callback(CompletionCallback callback) {
+    completion_callback = callback;
 }
 
 const char* wrapper_get_last_print_output(void) {

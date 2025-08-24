@@ -105,6 +105,11 @@ impl SmolluEmulator {
         self.vm.set_output_callback(sender);
     }
 
+    /// Set a callback for VM execution completion notifications
+    pub fn set_completion_callback(&self, sender: std::sync::mpsc::Sender<i32>) {
+        self.vm.set_completion_callback(sender);
+    }
+
     /// Get all accumulated print output from the VM
     pub fn get_all_print_output(&self) -> Option<String> {
         self.vm.get_all_print_output()
