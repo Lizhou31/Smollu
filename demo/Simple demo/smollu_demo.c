@@ -89,19 +89,17 @@ int smollu_interpreter_run(void) {
     /* Read native function table */
     uint8_t device_id    = buffer[5];
     uint8_t native_count = buffer[7];
-    const DeviceNativeTable *dtable = smollu_get_device_native_table(device_id);
-    if (!dtable) {
-        fprintf(stderr, "[VM] Unknown device id 0x%02X\n", device_id);
-        free(buffer);
-        return -1;
-    }
 
     /* Initialize VM */
     SmolluVM vm;
     smollu_vm_init(&vm);
 
+    /* Register native functions */
+    smollu_vm_register_native(&vm, 0, nat_print);
+    smollu_vm_register_native(&vm, 1, nat_rand);
+
     /* Prepare VM with header & native function table */
-    smollu_vm_prepare(&vm, buffer, dtable->table);
+    smollu_vm_prepare(&vm, buffer, NULL);
 
     /* Calculate code section offset and length */
     size_t code_offset = 16u + (size_t)native_count * 2u;

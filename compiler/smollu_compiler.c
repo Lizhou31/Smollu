@@ -2,12 +2,12 @@
  * @file smollu_compiler.c
  * @author Lizhou (lisie31s@gmail.com)
  * @brief Public API for the Smollu compiler
- * 
+ *
  * @version 0.1
  * @date 2025-07-26
- * 
+ *
  * @copyright Copyright (c) 2025 Lizhou
- * 
+ *
  */
 
 #include <stdio.h>
@@ -21,6 +21,7 @@ typedef struct {
     const char *input_file;
     const char *output_file;
     int output_ast;
+    uint8_t device_id;
 } Options;
 
 static void usage(const char *prog_name) {
@@ -29,12 +30,14 @@ static void usage(const char *prog_name) {
         "Options:\n"
         "  -o <file>   Write output to <file>\n"
         "  -a          Output AST to file\n"
+        "  -d <id>     Set device ID (default: 0x00)\n"
         "  -h          Show this help\n"
         "\n"
         "Examples:\n"
         "  %s foo.smol                     # output becomes foo.smolbc and foo.smolbc.ast (if -a is specified)\n"
-        "  %s foo.smol -o build/foo.smolbc # custom path/name\n",
-        prog_name, prog_name, prog_name);
+        "  %s foo.smol -o build/foo.smolbc # custom path/name\n"
+        "  %s foo.smol -d 0x01             # set device id to 0x01\n",
+        prog_name, prog_name, prog_name, prog_name);
 }
 
 static char *replace_text(const char *path, const char *new_ext) {
@@ -59,6 +62,9 @@ static int parse_args(int argc, char **argv, Options *opts) {
             opts->output_file = argv[i];
         } else if (strcmp(argv[i], "-a") == 0) {
             opts->output_ast = 1;
+        } else if (strcmp(argv[i], "-d") == 0) {
+            if (++i == argc) { fprintf(stderr,"-d needs a device id\n"); return -1; }
+            opts->device_id = strtol(argv[i], NULL, 16);
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help")==0) {
             usage(argv[0]);
             exit(0);
@@ -71,7 +77,7 @@ static int parse_args(int argc, char **argv, Options *opts) {
                 return -1;
             }
             opts->input_file = argv[i];
-        } 
+        }
     }
 
     if (!opts->input_file) {
@@ -242,7 +248,7 @@ static void print_ast(ASTNode *n, int depth, FILE *out) {
 /*  Public Compiler API                                                         */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-int smollu_compile(FILE *in, FILE *out, FILE *ast_out) {
+int smollu_compile(FILE *in, FILE *out, FILE *ast_out, uint8_t device_id) {
 
     /* Read entire input file into memory */
     fseek(in, 0, SEEK_END);
@@ -272,7 +278,7 @@ int smollu_compile(FILE *in, FILE *out, FILE *ast_out) {
     /* Emit bytecode */
     uint8_t *bytecode;
     size_t bytecode_len;
-    smollu_generate_bytecode(root, 0, 0, &bytecode, &bytecode_len);
+    smollu_generate_bytecode(root, device_id, 0, &bytecode, &bytecode_len);
 
     /* Print bytecode to output file */
     if (out) {
@@ -306,7 +312,7 @@ int main(int argc, char **argv) {
     }
 
     printf("Compiling %s to %s\n", opts.input_file, opts.output_file);
-    smollu_compile(in, out, ast_out);
+    smollu_compile(in, out, ast_out, opts.device_id);
 
     fclose(in);
     fclose(out);

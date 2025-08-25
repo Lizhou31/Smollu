@@ -2,12 +2,12 @@
  * @file smollu_compiler.h
  * @author Lizhou (lisie31s@gmail.com)
  * @brief Public API for the Smollu compiler
- * 
+ *
  * @version 0.1
  * @date 2025-07-26
- * 
+ *
  * @copyright Copyright (c) 2025 Lizhou
- * 
+ *
  */
 #ifndef SMOLLU_COMPILER_H
 #define SMOLLU_COMPILER_H
@@ -250,6 +250,6 @@ int smollu_generate_bytecode(ASTNode *root, uint8_t device_id, uint8_t version, 
 /* ──────────────────────────────────────────────────────────────────────────── */
 /*  Public Compiler API                                                        */
 /* ──────────────────────────────────────────────────────────────────────────── */
-int smollu_compile(FILE *in, FILE *out, FILE *ast_out);
+int smollu_compile(FILE *in, FILE *out, FILE *ast_out, uint8_t device_id);
 
 #endif /* SMOLLU_COMPILER_H */

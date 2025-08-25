@@ -28,10 +28,6 @@ extern "C" {
 /*  Demo device (device_id = 0x00)                                             */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
-/* Forward declarations – real bodies are in demo/smollu_demo.c */
-extern Value nat_print(Value *args, uint8_t argc);
-extern Value nat_rand (Value *args, uint8_t argc);
-
 /* For compiler use - only names matter, not function pointers */
 static const char *const demo_device_names[] = {
     "print",
@@ -40,15 +36,20 @@ static const char *const demo_device_names[] = {
 #define DEMO_DEVICE_NATIVE_COUNT 2
 #define DEMO_DEVICE_ID           0x00
 
-/* For runtime use - actual function table (only available when linked with implementations) */
-#ifdef SMOLLU_NATIVE_IMPLEMENTATIONS_AVAILABLE
-static const NativeFn demo_device_table[] = {
-    nat_print, /* index 0 */
-    nat_rand   /* index 1 */
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  RS Emulator device (device_id = 0x01)                                        */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+
+/* For compiler use - only names matter, not function pointers */
+static const char *const rs_emulator_names[] = {
+    "print",
+    "led_matrix_init",
+    "led_set",
+    "led_set_color"
 };
-#else
-static const NativeFn *demo_device_table = NULL; /* placeholder for compiler */
-#endif
+#define RS_EMULATOR_NATIVE_COUNT 4
+#define RS_EMULATOR_ID           0x01
 
 /* ──────────────────────────────────────────────────────────────────────────── */
 /*  Registry abstraction                                                       */
@@ -61,18 +62,12 @@ typedef struct {
     const NativeFn      *table;  /* length native_count */
 } DeviceNativeTable;
 
-#ifdef SMOLLU_NATIVE_IMPLEMENTATIONS_AVAILABLE
-static const DeviceNativeTable smollu_device_native_tables[] = {
-    { DEMO_DEVICE_ID, DEMO_DEVICE_NATIVE_COUNT, demo_device_names, demo_device_table },
-    /* Extend here for new devices */
-};
-#else
 /* Compiler-only registry - no function pointers needed */
 static const DeviceNativeTable smollu_device_native_tables[] = {
     { DEMO_DEVICE_ID, DEMO_DEVICE_NATIVE_COUNT, demo_device_names, NULL },
+    { RS_EMULATOR_ID, RS_EMULATOR_NATIVE_COUNT, rs_emulator_names, NULL },
     /* Extend here for new devices */
 };
-#endif
 static const size_t smollu_device_native_tables_len = sizeof(smollu_device_native_tables)/sizeof(smollu_device_native_tables[0]);
 
 static inline const DeviceNativeTable *smollu_get_device_native_table(uint8_t device_id)
