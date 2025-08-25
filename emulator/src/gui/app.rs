@@ -1,5 +1,5 @@
-use crate::gui::widgets::{ConsoleWidget, ControlsWidget};
 use crate::gui::widgets::controls::ControlAction;
+use crate::gui::widgets::{ConsoleWidget, ControlsWidget};
 use crate::{SmolluEmulator, VmError};
 use eframe::egui;
 use egui::{Color32, RichText};
@@ -34,7 +34,7 @@ impl Default for SmolluEmulatorApp {
 impl SmolluEmulatorApp {
     pub fn new() -> Self {
         let emulator = SmolluEmulator::new().expect("Failed to create emulator");
-        
+
         Self {
             emulator,
             console: ConsoleWidget::new(),
@@ -55,10 +55,8 @@ impl SmolluEmulatorApp {
         match self.emulator.load_bytecode_file(&file_path) {
             Ok(()) => {
                 self.controls.set_current_file(Some(file_path.clone()));
-                self.console.add_output(&format!(
-                    "✅ Loaded bytecode from: {}",
-                    file_path.display()
-                ));
+                self.console
+                    .add_output(&format!("✅ Loaded bytecode from: {}", file_path.display()));
                 self.error_message = None;
             }
             Err(e) => {
@@ -74,12 +72,12 @@ impl SmolluEmulatorApp {
         }
 
         self.console.add_output("🚀 Starting VM execution...");
-        
+
         let (tx, rx) = mpsc::channel();
         self.execution_receiver = Some(rx);
 
         let mut emulator_clone = SmolluEmulator::new().expect("Failed to create emulator clone");
-        
+
         if let Some(current_file) = self.controls.current_file().clone() {
             if let Err(e) = emulator_clone.load_bytecode_file(&current_file) {
                 self.error_message = Some(format!("Failed to reload bytecode: {}", e));
@@ -102,7 +100,10 @@ impl SmolluEmulatorApp {
             let output_execution_tx = execution_tx.clone();
             let _output_thread = thread::spawn(move || {
                 while let Ok(output) = output_rx.recv() {
-                    if output_execution_tx.send(ExecutionResult::Output(output)).is_err() {
+                    if output_execution_tx
+                        .send(ExecutionResult::Output(output))
+                        .is_err()
+                    {
                         break;
                     }
                 }
@@ -112,7 +113,10 @@ impl SmolluEmulatorApp {
             let completion_execution_tx = execution_tx.clone();
             let _completion_thread = thread::spawn(move || {
                 while let Ok(exit_code) = completion_rx.recv() {
-                    if completion_execution_tx.send(ExecutionResult::Completed(exit_code)).is_err() {
+                    if completion_execution_tx
+                        .send(ExecutionResult::Completed(exit_code))
+                        .is_err()
+                    {
                         break;
                     }
                 }
@@ -122,12 +126,14 @@ impl SmolluEmulatorApp {
             match emulator_clone.run() {
                 Err(VmError::ExecutionError(code)) => {
                     let _ = execution_tx.send(ExecutionResult::Error(format!(
-                        "VM execution failed with error code: {}", code
+                        "VM execution failed with error code: {}",
+                        code
                     )));
                 }
                 Err(e) => {
                     let _ = execution_tx.send(ExecutionResult::Error(format!(
-                        "VM execution failed: {}", e
+                        "VM execution failed: {}",
+                        e
                     )));
                 }
                 Ok(_) => {
@@ -157,7 +163,7 @@ impl SmolluEmulatorApp {
 
     fn check_execution_status(&mut self) {
         let mut should_clear_receiver = false;
-        
+
         if let Some(ref receiver) = self.execution_receiver {
             while let Ok(result) = receiver.try_recv() {
                 match result {
@@ -166,7 +172,8 @@ impl SmolluEmulatorApp {
                     }
                     ExecutionResult::Completed(exit_code) => {
                         self.console.add_output(&format!(
-                            "✅ VM execution completed with exit code: {}", exit_code
+                            "✅ VM execution completed with exit code: {}",
+                            exit_code
                         ));
                         self.controls.set_vm_running(false);
                         if let Some(handle) = self.vm_execution_thread.take() {
@@ -185,7 +192,7 @@ impl SmolluEmulatorApp {
                 }
             }
         }
-        
+
         if should_clear_receiver {
             self.execution_receiver = None;
         }

@@ -46,7 +46,7 @@ impl ConsoleWidget {
                 ui.separator();
 
                 let available_height = ui.available_height() - 20.0;
-                
+
                 ScrollArea::vertical()
                     .max_height(available_height)
                     .auto_shrink([false, false])

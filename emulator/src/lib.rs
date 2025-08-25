@@ -4,11 +4,11 @@
 //! This library provides safe Rust bindings over the C VM implementation and includes
 //! emulator-specific features like hardware simulation and debugging tools.
 
-pub mod vm;
 pub mod gui;
+pub mod vm;
 
-pub use vm::{SmolluVM, Value, ValueType, VmError};
 pub use gui::SmolluEmulatorApp;
+pub use vm::{SmolluVM, Value, ValueType, VmError};
 
 use anyhow::Result;
 use std::fs;

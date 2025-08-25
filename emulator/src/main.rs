@@ -1,5 +1,5 @@
-use smollu_emulator::{SmolluEmulator, SmolluEmulatorApp, VmError};
 use eframe::egui;
+use smollu_emulator::{SmolluEmulator, SmolluEmulatorApp, VmError};
 use std::env;
 use std::path::PathBuf;
 use std::process;
@@ -30,18 +30,18 @@ fn run_gui_mode(args: &[String]) {
         if file_path.exists() {
             SmolluEmulatorApp::with_file(file_path)
         } else {
-            eprintln!("Warning: File '{}' does not exist. Starting with empty emulator.", args[1]);
+            eprintln!(
+                "Warning: File '{}' does not exist. Starting with empty emulator.",
+                args[1]
+            );
             SmolluEmulatorApp::new()
         }
     } else {
         SmolluEmulatorApp::new()
     };
 
-    if let Err(e) = eframe::run_native(
-        "Smollu VM Emulator",
-        options,
-        Box::new(|_cc| Box::new(app)),
-    ) {
+    if let Err(e) = eframe::run_native("Smollu VM Emulator", options, Box::new(|_cc| Box::new(app)))
+    {
         eprintln!("Failed to run GUI: {}", e);
         process::exit(1);
     }

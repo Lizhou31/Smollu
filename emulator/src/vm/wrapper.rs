@@ -161,7 +161,6 @@ impl Drop for SmolluVM {
 // SAFETY: The C VM is designed to be used from a single thread at a time.
 unsafe impl Send for SmolluVM {}
 
-
 /// Rust representation of Smollu values
 #[derive(Debug, Clone, PartialEq)]
 pub enum Value {
@@ -245,11 +244,9 @@ extern "C" fn rust_output_callback(output: *const std::os::raw::c_char) {
     if output.is_null() {
         return;
     }
-    
-    let output_str = unsafe {
-        CStr::from_ptr(output).to_str().unwrap_or("<invalid utf8>")
-    };
-    
+
+    let output_str = unsafe { CStr::from_ptr(output).to_str().unwrap_or("<invalid utf8>") };
+
     let sender_mutex = GLOBAL_OUTPUT_SENDER.get_or_init(|| Mutex::new(None));
     if let Ok(sender_guard) = sender_mutex.lock() {
         if let Some(ref sender) = *sender_guard {
@@ -274,7 +271,7 @@ unsafe fn set_rust_output_callback(sender: mpsc::Sender<String>) {
     if let Ok(mut sender_guard) = sender_mutex.lock() {
         *sender_guard = Some(sender);
     }
-    
+
     // Register the C callback
     wrapper_set_output_callback(Some(rust_output_callback));
 }
@@ -285,7 +282,7 @@ unsafe fn set_rust_completion_callback(sender: mpsc::Sender<i32>) {
     if let Ok(mut sender_guard) = sender_mutex.lock() {
         *sender_guard = Some(sender);
     }
-    
+
     // Register the C callback
     wrapper_set_completion_callback(Some(rust_completion_callback));
 }
