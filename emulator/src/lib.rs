@@ -5,12 +5,15 @@
 //! emulator-specific features like hardware simulation and debugging tools.
 
 pub mod gui;
+pub mod hardware;
 pub mod vm;
 
 pub use gui::SmolluEmulatorApp;
+pub use hardware::LedMatrix;
 pub use vm::{SmolluVM, Value, ValueType, VmError};
 
 use anyhow::Result;
+use hardware::led_matrix::{get_led_matrix_manager, LedMatrix as HardwareLedMatrix};
 use std::fs;
 use std::path::Path;
 
@@ -113,6 +116,23 @@ impl SmolluEmulator {
     /// Get all accumulated print output from the VM
     pub fn get_all_print_output(&self) -> Option<String> {
         self.vm.get_all_print_output()
+    }
+
+    /// Get the current LED matrix for GUI display
+    pub fn get_led_matrix(&self) -> Option<HardwareLedMatrix> {
+        let manager = get_led_matrix_manager();
+        manager.get_current_matrix_clone()
+    }
+
+    /// Create a new LED matrix with given dimensions
+    pub fn create_led_matrix(&self, rows: usize, cols: usize) -> bool {
+        let manager = get_led_matrix_manager();
+        manager.create_matrix(0, rows, cols)
+    }
+
+    /// Check if an LED matrix exists
+    pub fn has_led_matrix(&self) -> bool {
+        self.get_led_matrix().is_some()
     }
 }
 

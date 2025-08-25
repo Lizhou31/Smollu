@@ -46,9 +46,14 @@ static const char *const rs_emulator_names[] = {
     "print",
     "led_matrix_init",
     "led_set",
-    "led_set_color"
+    "led_set_color",
+    "led_clear",
+    "led_set_row",
+    "led_set_col",
+    "led_get",
+    "delay_ms"
 };
-#define RS_EMULATOR_NATIVE_COUNT 4
+#define RS_EMULATOR_NATIVE_COUNT 9
 #define RS_EMULATOR_ID           0x01
 
 /* ──────────────────────────────────────────────────────────────────────────── */

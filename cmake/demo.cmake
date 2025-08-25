@@ -18,6 +18,18 @@ configure_file(
     COPYONLY
 )
 
+file(MAKE_DIRECTORY ${CMAKE_BINARY_DIR}/demo/LED\ Matrix\ demo)
+configure_file(
+    ${CMAKE_SOURCE_DIR}/demo/LED\ Matrix\ demo/basic_led_demo.smol
+    ${CMAKE_BINARY_DIR}/demo/LED\ Matrix\ demo/basic_led_demo.smol
+    COPYONLY
+)
+configure_file(
+    ${CMAKE_SOURCE_DIR}/demo/LED\ Matrix\ demo/animation_demo.smol
+    ${CMAKE_BINARY_DIR}/demo/LED\ Matrix\ demo/animation_demo.smol
+    COPYONLY
+)
+
 # Copy executables to demo directory after build
 add_custom_command(TARGET smollu_demo POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:smollu_demo> ${CMAKE_BINARY_DIR}/demo/Simple\ demo/
@@ -27,6 +39,12 @@ add_custom_command(TARGET smollu_demo POST_BUILD
 # Create a custom target to copy compiler after it's built
 add_custom_target(copy_compiler_to_demo ALL
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:smollu_compiler> ${CMAKE_BINARY_DIR}/demo/Simple\ demo/
+    COMMENT "Copying smollu_compiler to demo directory"
+    DEPENDS smollu_compiler
+)
+
+add_custom_target(copy_compiler_to_led_matrix_demo ALL
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:smollu_compiler> ${CMAKE_BINARY_DIR}/demo/LED\ Matrix\ demo/
     COMMENT "Copying smollu_compiler to demo directory"
     DEPENDS smollu_compiler
 )

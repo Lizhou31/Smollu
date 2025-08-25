@@ -3,6 +3,7 @@
 //! This module provides safe, idiomatic Rust interfaces over the raw C bindings.
 //! It handles memory management, error checking, and type safety.
 
+use crate::hardware::led_matrix::{get_led_matrix_manager, LedColor};
 use crate::vm::bindings::*;
 use anyhow::Result;
 use std::ffi::CStr;
@@ -285,4 +286,131 @@ unsafe fn set_rust_completion_callback(sender: mpsc::Sender<i32>) {
 
     // Register the C callback
     wrapper_set_completion_callback(Some(rust_completion_callback));
+}
+
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  LED Matrix Rust implementations called from C                              */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/// Rust function called from C to create an LED matrix
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_create(matrix_id: u8, rows: u16, cols: u16) -> i32 {
+    let manager = get_led_matrix_manager();
+    if manager.create_matrix(matrix_id, rows as usize, cols as usize) {
+        0
+    } else {
+        -1
+    }
+}
+
+/// Rust function called from C to set current LED matrix
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_set_current(matrix_id: u8) -> i32 {
+    let manager = get_led_matrix_manager();
+    if manager.set_current_matrix(matrix_id) {
+        0
+    } else {
+        -1
+    }
+}
+
+/// Rust function called from C to set LED color
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_set_led(row: u16, col: u16, r: u8, g: u8, b: u8) -> i32 {
+    let manager = get_led_matrix_manager();
+    let color = LedColor::new(r, g, b);
+
+    let result =
+        manager.with_current_matrix(|matrix| matrix.turn_on(row as usize, col as usize, color));
+
+    match result {
+        Some(true) => 0,
+        _ => -1,
+    }
+}
+
+/// Rust function called from C to clear all LEDs
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_clear_all() -> i32 {
+    let manager = get_led_matrix_manager();
+
+    let result = manager.with_current_matrix(|matrix| {
+        matrix.clear();
+        true
+    });
+
+    match result {
+        Some(_) => 0,
+        None => -1,
+    }
+}
+
+/// Rust function called from C to set row pattern
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_set_row_pattern(
+    row: u16,
+    pattern: u32,
+    r: u8,
+    g: u8,
+    b: u8,
+) -> i32 {
+    let manager = get_led_matrix_manager();
+    let color = LedColor::new(r, g, b);
+
+    let result = manager.with_current_matrix(|matrix| matrix.set_row(row as usize, pattern, color));
+
+    match result {
+        Some(true) => 0,
+        _ => -1,
+    }
+}
+
+/// Rust function called from C to set column pattern
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_set_col_pattern(
+    col: u16,
+    pattern: u32,
+    r: u8,
+    g: u8,
+    b: u8,
+) -> i32 {
+    let manager = get_led_matrix_manager();
+    let color = LedColor::new(r, g, b);
+
+    let result = manager.with_current_matrix(|matrix| matrix.set_col(col as usize, pattern, color));
+
+    match result {
+        Some(true) => 0,
+        _ => -1,
+    }
+}
+
+/// Rust function called from C to get LED state
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_get_led_state(row: u16, col: u16) -> i32 {
+    let manager = get_led_matrix_manager();
+
+    let result = manager.with_current_matrix(|matrix| {
+        matrix
+            .get_led(row as usize, col as usize)
+            .map(|led| if led.is_on() { 1 } else { 0 })
+            .unwrap_or(0)
+    });
+
+    result.unwrap_or(0)
+}
+
+/// Rust function called from C to delay for a given number of milliseconds
+#[no_mangle]
+pub extern "C" fn rust_led_matrix_delay_ms(ms: u32) -> i32 {
+    let manager = get_led_matrix_manager();
+
+    // First set the delay state on the matrix for GUI visualization
+    manager.with_current_matrix(|matrix| matrix.delay_ms(ms));
+
+    // Then request synchronized delay (blocks until GUI signals completion)
+    match manager.request_synchronized_delay(ms) {
+        Ok(()) => 0,
+        Err(_) => -1,
+    }
 }

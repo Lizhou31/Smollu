@@ -1,7 +1,7 @@
 /**
  * @file wrapper.h
  * @brief C wrapper functions for Smollu VM to provide safe FFI interface
- * 
+ *
  * This header provides a simplified C interface over the Smollu VM that is
  * easier to bind to from Rust. It handles memory management and provides
  * safer function signatures.
@@ -257,6 +257,86 @@ const char* wrapper_get_all_print_output(void);
  * Clear the print output buffer
  */
 void wrapper_clear_print_output(void);
+
+/* ──────────────────────────────────────────────────────────────────────────── */
+/*  LED Matrix Hardware Simulation                                             */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/**
+ * Native function: led_matrix_init - Initialize LED matrix with given dimensions
+ * @param args Function arguments [rows, cols]
+ * @param argc Number of arguments (should be 2)
+ * @return NIL value
+ */
+Value emulator_native_led_matrix_init(Value* args, uint8_t argc);
+
+/**
+ * Native function: led_set - Set individual LED state
+ * @param args Function arguments [row, col, state] (state: 0=off, 1=on)
+ * @param argc Number of arguments (should be 3)
+ * @return NIL value
+ */
+Value emulator_native_led_set(Value* args, uint8_t argc);
+
+/**
+ * Native function: led_set_color - Set individual LED with color
+ * @param args Function arguments [row, col, r, g, b] (r,g,b: 0-255)
+ * @param argc Number of arguments (should be 5)
+ * @return NIL value
+ */
+Value emulator_native_led_set_color(Value* args, uint8_t argc);
+
+/**
+ * Native function: led_clear - Clear all LEDs (turn them off)
+ * @param args Function arguments (none)
+ * @param argc Number of arguments (should be 0)
+ * @return NIL value
+ */
+Value emulator_native_led_clear(Value* args, uint8_t argc);
+
+/**
+ * Native function: led_set_row - Set entire row based on bit pattern
+ * @param args Function arguments [row, pattern] (pattern: bit mask)
+ * @param argc Number of arguments (should be 2)
+ * @return NIL value
+ */
+Value emulator_native_led_set_row(Value* args, uint8_t argc);
+
+/**
+ * Native function: led_set_col - Set entire column based on bit pattern
+ * @param args Function arguments [col, pattern] (pattern: bit mask)
+ * @param argc Number of arguments (should be 2)
+ * @return NIL value
+ */
+Value emulator_native_led_set_col(Value* args, uint8_t argc);
+
+/**
+ * Native function: led_get - Get LED state
+ * @param args Function arguments [row, col]
+ * @param argc Number of arguments (should be 2)
+ * @return Integer value (0=off, 1=on)
+ */
+Value emulator_native_led_get(Value* args, uint8_t argc);
+
+/**
+ * Native function: delay_ms - Delay for a specified number of milliseconds
+ * @param args Function arguments [ms]
+ * @param argc Number of arguments (should be 1)
+ * @return NIL value
+ */
+Value emulator_native_delay_ms(Value* args, uint8_t argc);
+
+/**
+ * C API for LED matrix operations (called from Rust)
+ */
+int led_matrix_create(uint8_t matrix_id, uint16_t rows, uint16_t cols);
+int led_matrix_set_current(uint8_t matrix_id);
+int led_matrix_set_led(uint16_t row, uint16_t col, uint8_t r, uint8_t g, uint8_t b);
+int led_matrix_clear_all(void);
+int led_matrix_set_row_pattern(uint16_t row, uint32_t pattern, uint8_t r, uint8_t g, uint8_t b);
+int led_matrix_set_col_pattern(uint16_t col, uint32_t pattern, uint8_t r, uint8_t g, uint8_t b);
+int led_matrix_get_led_state(uint16_t row, uint16_t col);
+int led_matrix_delay_ms(uint32_t ms);
 
 #ifdef __cplusplus
 }

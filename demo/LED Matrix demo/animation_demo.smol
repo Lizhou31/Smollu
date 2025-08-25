@@ -1,0 +1,69 @@
+init {
+    -- Initialize a 8x8 LED matrix for animation
+    native led_matrix_init(8, 8);
+}
+
+main {
+    -- Create a simple animation by moving a dot across the matrix
+    local x = 0;
+    local y = 0;
+    local frame = 0;
+
+    -- Animation loop - move a dot in a square pattern
+    while (frame < 28) {
+        native led_clear();
+
+        if (frame < 7) {
+            -- Move right along top edge
+            local x = frame;
+            local y = 0;
+        } elif (frame < 14) {
+            -- Move down along right edge
+            local x = 7;
+            local y = frame - 7;
+        } elif (frame < 21) {
+            -- Move left along bottom edge
+            local x = 7 - (frame - 14);
+            local y = 7;
+        } else {
+            -- Move up along left edge
+            local x = 0;
+            local y = 7 - (frame - 21);
+        }
+
+        -- Set the LED at current position with cycling colors
+        local color_frame = frame % 3;
+        if (color_frame == 0) {
+            native led_set_color(y, x, 255, 0, 0);    -- Red
+        } elif (color_frame == 1) {
+            native led_set_color(y, x, 0, 255, 0);    -- Green
+        } else {
+            native led_set_color(y, x, 0, 0, 255);    -- Blue
+        }
+
+        local frame = frame + 1;
+
+        native delay_ms(100);
+    }
+
+    -- Final pattern - create a checkerboard
+    native led_clear();
+    local row = 0;
+    while (row < 8) {
+        local col = 0;
+        while (col < 8) {
+            -- Checkerboard pattern: turn on LED if (row + col) is even
+            local sum = row + col;
+            if (sum % 2 == 0) {
+                native led_set_color(row, col, 255, 255, 255);  -- White
+            }
+            local col = col + 1;
+        }
+        local row = row + 1;
+        native delay_ms(500);
+    }
+
+}
+
+functions {
+}
