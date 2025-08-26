@@ -10,13 +10,15 @@ The Smollu Emulator is designed to provide a modern development environment for 
 - **Modern GUI Interface**: Real-time visualization with egui framework
 - **Dual Mode Operation**: Both GUI and CLI interfaces available
 - **Enhanced Debugging**: VM state inspection and execution control
-- **Hardware Simulation**: Virtual LED matrices, GPIO pins, and sensors (planned)
+- **LED Matrix Simulation**: Real-time hardware visualization with synchronized delays
+- **Hardware Simulation**: Virtual GPIO pins and sensors (planned)
 
 ## Project Status
 
 - ✅ **Phase 1 Complete**: Core C VM Integration
 - ✅ **Phase 2 Complete**: Basic GUI Framework with file loading and console output
-- 📋 **Phase 3 Planned**: Hardware Simulation
+- ✅ **Phase 3 Complete**: LED Matrix Hardware Simulation with Synchronized Delays
+- 📋 **Phase 4 Planned**: Additional Hardware Components (GPIO, sensors)
 
 ## Quick Start
 
@@ -61,6 +63,15 @@ cargo run "../build/demo/Simple demo/demo.smolbc"
 cargo run -- --cli "../build/demo/Simple demo/demo.smolbc"
 ```
 
+**LED Matrix Demos**:
+```bash
+# Run LED matrix animation demo
+cargo run "../build/demo/LED matrix demo/animation_demo.smolbc"
+
+# Run basic LED matrix demo
+cargo run "../build/demo/LED matrix demo/basic_led_demo.smolbc"
+```
+
 **Examples and Tests**:
 ```bash
 # Run integration tests
@@ -86,7 +97,11 @@ emulator/
 │   │   └── widgets/        # GUI components
 │   │       ├── mod.rs      # Widget exports
 │   │       ├── console.rs  # Console output widget
-│   │       └── controls.rs # VM control buttons
+│   │       ├── controls.rs # VM control buttons
+│   │       └── led_matrix.rs # LED matrix visualization widget
+│   ├── hardware/           # Hardware simulation (Phase 3)
+│   │   ├── mod.rs          # Hardware module exports
+│   │   └── led_matrix.rs   # LED matrix simulation with synchronized delays
 │   └── vm/                 # VM integration layer
 │       ├── mod.rs          # Module exports
 │       ├── bindings.rs     # Generated C bindings
@@ -122,7 +137,13 @@ emulator/
 - **Controls Widget**: File loading, VM execution controls (Load/Run/Reset)
 - **File Management**: Native file dialogs with .smolbc filtering
 
-#### 5. **Dual Mode Interface** (`src/main.rs`)
+#### 5. **Hardware Simulation** (`src/hardware/`)
+- **LED Matrix**: Configurable 2D matrix with RGB LED support
+- **Synchronized Delays**: True hardware timing simulation with VM synchronization
+- **Real-time GUI**: Live visualization with delay countdown display
+- **Native Functions**: Complete API for matrix control (init, set, clear, patterns)
+
+#### 6. **Dual Mode Interface** (`src/main.rs`)
 - **GUI Mode**: Modern interface with real-time visualization
 - **CLI Mode**: Traditional command-line interface with --cli flag
 - **File Loading**: Support for both modes with identical functionality
@@ -146,6 +167,7 @@ cargo run "../build/demo/Simple demo/demo.smolbc"
 - ▶️ **VM Execution**: Run button starts threaded VM execution
 - 🔄 **Reset**: Clear VM state and console output
 - 📜 **Console**: Scrollable output with auto-scroll and clear options
+- 🔲 **LED Matrix Panel**: Real-time hardware visualization with configuration controls
 - ⚡ **Real-time**: Non-blocking execution with live status updates
 
 ### CLI Mode
@@ -155,6 +177,48 @@ For automated scripts or traditional workflows:
 ```bash
 cargo run -- --cli "../build/demo/Simple demo/demo.smolbc"
 ```
+
+### LED Matrix Hardware Simulation
+
+The emulator includes comprehensive LED matrix hardware simulation with native functions for Smollu programs:
+
+**Available Native Functions:**
+```smol
+native led_matrix_init(rows, cols);           // Initialize matrix (1-64 x 1-64)
+native led_set_color(row, col, r, g, b);      // Set LED with RGB color (0-255)
+native led_set(row, col, state);              // Set LED on/off (0=off, 1=on)
+native led_clear();                           // Clear all LEDs
+native led_set_row(row, pattern);             // Set row with bit pattern
+native led_set_col(col, pattern);             // Set column with bit pattern
+native led_get(row, col);                     // Get LED state (returns 0/1)
+native delay_ms(milliseconds);                // Hardware-synchronized delay
+```
+
+**Example Smollu Program:**
+```smol
+init {
+    native led_matrix_init(8, 8);
+}
+
+main {
+    // Create a red dot that moves across the matrix
+    local x = 0;
+    while (x < 8) {
+        native led_clear();
+        native led_set_color(0, x, 255, 0, 0);  // Red LED
+        native delay_ms(500);                   // Synchronized delay
+        x = x + 1;
+    }
+}
+```
+
+**Hardware Features:**
+- **RGB LEDs**: Full color support with 0-255 color values per channel
+- **Configurable Size**: Up to 64x64 LED matrices
+- **Pattern Operations**: Efficient row/column bit pattern setting
+- **Synchronized Delays**: VM execution pauses with GUI countdown display
+- **Real-time GUI**: Live LED state visualization with hover tooltips and statistics
+- **Interactive Controls**: LED size, spacing, grid display, and color configuration
 
 ### Programmatic Usage
 
