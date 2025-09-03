@@ -3,12 +3,12 @@
  * @author Lizhou (lisie31s@gmail.com)
  * @brief Recursive-descent parser building an AST for Smollu.
  * Depends on the lexer defined in smollu_lexer.c and public API in smollu_compiler.h
- * 
+ *
  * @version 0.1
  * @date 2025-07-26
- * 
+ *
  * @copyright Copyright (c) 2025 Lizhou
- * 
+ *
  */
 
 #include <stdio.h>
@@ -69,10 +69,10 @@ static ASTNode *parse_argument_list(Parser *p) {
     if (parser_check(p, TOK_RPAREN)) {
         return NULL; /* empty argument list */
     }
-    
+
     ASTNode *args = NULL;
     ASTNode *last = NULL;
-    
+
     do {
         ASTNode *arg = parse_expression(p);
         if (!args) {
@@ -83,7 +83,7 @@ static ASTNode *parse_argument_list(Parser *p) {
             last = arg;
         }
     } while (parser_match(p, TOK_COMMA));
-    
+
     return args;
 }
 
@@ -120,6 +120,27 @@ static ASTNode *parse_primary(Parser *p) {
             parser_advance(p);
             return n;
         }
+        case TOK_KW_NATIVE: {
+            Token native_tok = p->current;
+            parser_advance(p); /* consume 'native' */
+
+            if (!parser_check(p, TOK_IDENTIFIER)) {
+                fprintf(stderr, "[Parser] Expected identifier after 'native' at %d:%d\n",
+                        p->current.line, p->current.column);
+                exit(1);
+            }
+
+            char *name = strdup(p->current.lexeme);
+            parser_advance(p); /* consume identifier */
+            parser_expect(p, TOK_LPAREN, "(");
+            ASTNode *args = parse_argument_list(p);
+            parser_expect(p, TOK_RPAREN, ")");
+
+            ASTNode *native_call = new_node(AST_NATIVE_CALL, native_tok.line, native_tok.column);
+            native_call->as.native_call.name = name;
+            native_call->as.native_call.args = args;
+            return native_call;
+        }
         case TOK_LPAREN: {
             parser_advance(p);
             ASTNode *expr = parse_expression(p);
@@ -135,27 +156,27 @@ static ASTNode *parse_primary(Parser *p) {
 /* ─────────────────── Postfix (function calls) ------------------------------ */
 static ASTNode *parse_postfix(Parser *p) {
     ASTNode *expr = parse_primary(p);
-    
+
     while (parser_check(p, TOK_LPAREN)) {
         if (expr->type != AST_IDENTIFIER) {
-            fprintf(stderr, "[Parser] Function call on non-identifier at %d:%d\n", 
+            fprintf(stderr, "[Parser] Function call on non-identifier at %d:%d\n",
                     p->current.line, p->current.column);
             exit(1);
         }
-        
+
         Token tok = p->current;
         parser_advance(p); /* consume '(' */
         ASTNode *args = parse_argument_list(p);
         parser_expect(p, TOK_RPAREN, ")");
-        
+
         ASTNode *call = new_node(AST_FUNCTION_CALL, tok.line, tok.column);
         call->as.func_call.name = strdup(expr->as.identifier);
         call->as.func_call.args = args;
-        
+
         ast_free(expr); /* free the original identifier node */
         expr = call;
     }
-    
+
     return expr;
 }
 
@@ -300,6 +321,7 @@ static ASTNode *parse_assignment(Parser *p, int is_local) {
     char *name = strdup(ident_tok.lexeme);
     parser_expect(p, TOK_IDENTIFIER, "identifier");
     parser_expect(p, TOK_EQUAL, "=");
+
     ASTNode *value = parse_expression(p);
     parser_expect(p, TOK_SEMICOLON, ";");
 
@@ -316,28 +338,6 @@ static ASTNode *parse_statement(Parser *p) {
     }
     if (parser_check(p, TOK_KW_IF)) {
         return parse_if(p);
-    }
-    if (parser_check(p, TOK_KW_NATIVE)) {
-        Token tok = p->current;
-        parser_advance(p); /* consume 'native' */
-        
-        if (!parser_check(p, TOK_IDENTIFIER)) {
-            fprintf(stderr, "[Parser] Expected identifier after 'native' at %d:%d\n", 
-                    p->current.line, p->current.column);
-            exit(1);
-        }
-        
-        char *name = strdup(p->current.lexeme);
-        parser_advance(p); /* consume identifier */
-        parser_expect(p, TOK_LPAREN, "(");
-        ASTNode *args = parse_argument_list(p);
-        parser_expect(p, TOK_RPAREN, ")");
-        parser_expect(p, TOK_SEMICOLON, ";");
-        
-        ASTNode *native_call = new_node(AST_NATIVE_CALL, tok.line, tok.column);
-        native_call->as.native_call.name = name;
-        native_call->as.native_call.args = args;
-        return native_call;
     }
     if (parser_check(p, TOK_KW_LOCAL)) {
         parser_advance(p);
@@ -377,7 +377,7 @@ static ASTNode *parse_statement(Parser *p) {
             ASTNode *args = parse_argument_list(p);
             parser_expect(p, TOK_RPAREN, ")");
             parser_expect(p, TOK_SEMICOLON, ";");
-            
+
             ASTNode *func_call = new_node(AST_FUNCTION_CALL, ident_tok.line, ident_tok.column);
             func_call->as.func_call.name = name;
             func_call->as.func_call.args = args;
@@ -446,21 +446,21 @@ static ASTNode *parse_parameter_list(Parser *p) {
     if (parser_check(p, TOK_RPAREN)) {
         return NULL; /* empty parameter list */
     }
-    
+
     ASTNode *params = NULL;
     ASTNode *last = NULL;
-    
+
     do {
         if (!parser_check(p, TOK_IDENTIFIER)) {
-            fprintf(stderr, "[Parser] Expected parameter name at %d:%d\n", 
+            fprintf(stderr, "[Parser] Expected parameter name at %d:%d\n",
                     p->current.line, p->current.column);
             exit(1);
         }
-        
+
         ASTNode *param = new_node(AST_PARAMETER_LIST, p->current.line, p->current.column);
         param->as.param.param_name = strdup(p->current.lexeme);
         parser_advance(p);
-        
+
         if (!params) {
             params = param;
             last = param;
@@ -469,28 +469,28 @@ static ASTNode *parse_parameter_list(Parser *p) {
             last = param;
         }
     } while (parser_match(p, TOK_COMMA));
-    
+
     return params;
 }
 
 static ASTNode *parse_function_def(Parser *p) {
     Token tok = p->current; /* TOK_KW_FUNCTION */
     parser_advance(p);
-    
+
     if (!parser_check(p, TOK_IDENTIFIER)) {
-        fprintf(stderr, "[Parser] Expected function name at %d:%d\n", 
+        fprintf(stderr, "[Parser] Expected function name at %d:%d\n",
                 p->current.line, p->current.column);
         exit(1);
     }
-    
+
     char *name = strdup(p->current.lexeme);
     parser_advance(p);
-    
+
     parser_expect(p, TOK_LPAREN, "(");
     ASTNode *params = parse_parameter_list(p);
     parser_expect(p, TOK_RPAREN, ")");
     ASTNode *body = parse_block(p);
-    
+
     ASTNode *func_def = new_node(AST_FUNCTION_DEF, tok.line, tok.column);
     func_def->as.func_def.name = name;
     func_def->as.func_def.params = params;
@@ -506,7 +506,7 @@ static ASTNode *parse_functions(Parser *p) {
             ASTNode *func_def = parse_function_def(p);
             funcs = append_statement(funcs, func_def);
         } else {
-            fprintf(stderr, "[Parser] Expected 'function' in functions section at %d:%d\n", 
+            fprintf(stderr, "[Parser] Expected 'function' in functions section at %d:%d\n",
                     p->current.line, p->current.column);
             exit(1);
         }

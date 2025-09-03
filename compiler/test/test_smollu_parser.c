@@ -143,7 +143,7 @@ Test(parser, while_and_assignment) {
     cr_assert_eq(init_stmt->as.assign.is_local, 1, "Expected local assignment");
     cr_assert_str_eq(init_stmt->as.assign.name, "x");
 
-    /* Main has two statements: while loop and if statement */      
+    /* Main has two statements: while loop and if statement */
     ASTNode *main_stmt = main_first_stmt(root);
     expect_node_type(main_stmt, AST_WHILE, "while statement");
 
@@ -227,12 +227,15 @@ Test(parser, if_elif_else) {
     ast_free(root);
     parser_free(&p);
     lexer_free(&lex);
-} 
+}
 
 Test(parser, function_definition) {
     const char *code =
         "init {}\n"
-        "main {}\n"
+        "main {\n"
+        "  local result = add(1, 2);\n"
+        "  local result = native print(1);\n"
+        "}\n"
         "functions {\n"
         "  function add(a, b) {\n"
         "    local sum = a + b;\n"
@@ -262,7 +265,7 @@ Test(parser, function_definition) {
     ASTNode *param1 = func1->as.func_def.params;
     expect_node_type(param1, AST_PARAMETER_LIST, "first parameter");
     cr_assert_str_eq(param1->as.param.param_name, "a");
-    
+
     ASTNode *param2 = param1->next;
     expect_node_type(param2, AST_PARAMETER_LIST, "second parameter");
     cr_assert_str_eq(param2->as.param.param_name, "b");
@@ -316,11 +319,11 @@ Test(parser, native_and_function_calls) {
     /* Check init section */
     ASTNode *init = root->as.program.init;
     ASTNode *init_stmt1 = init->as.block.stmts;
-    
+
     /* First statement: native call */
     expect_node_type(init_stmt1, AST_NATIVE_CALL, "native call");
     cr_assert_str_eq(init_stmt1->as.native_call.name, "setup_gpio");
-    
+
     /* Check arguments */
     ASTNode *arg1 = init_stmt1->as.native_call.args;
     expect_node_type(arg1, AST_IDENTIFIER, "first argument");
@@ -356,4 +359,4 @@ Test(parser, native_and_function_calls) {
     ast_free(root);
     parser_free(&p);
     lexer_free(&lex);
-} 
+}
