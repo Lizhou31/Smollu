@@ -1,0 +1,94 @@
+//===- SmolluParser.cpp - Unified Smollu parser implementation -*- C++ -*-===//
+//
+// Unified API implementation for Smollu parsing with AST-only and MLIR modes
+//
+//===----------------------------------------------------------------------===//
+
+#include "Smollu/SmolluParser.h"
+#include <iostream>
+
+using namespace mlir;
+using namespace mlir::smollu;
+using SmolluASTNode = mlir::smollu::SmolluASTNode;
+
+SmolluParser::SmolluParser(MLIRContext *ctx, CompilationMode m)
+    : context(ctx), mode(m) {
+}
+
+SmolluASTNode SmolluParser::parseToAST(const std::string &source) {
+    SmolluASTParser astParser;
+    return astParser.parseSourceFile(source);
+}
+
+ModuleOp SmolluParser::parseToMLIR(const std::string &source) {
+    if (mode != CompilationMode::MLIR_MODULE) {
+        std::cerr << "Error: MLIR generation not available in AST_ONLY mode\n";
+        return nullptr;
+    }
+
+    // First parse to AST
+    SmolluASTNode ast = parseToAST(source);
+    if (ast.type.empty()) {
+        return nullptr;
+    }
+
+    // Then generate MLIR from AST
+    SmolluMLIRGenerator mlirGen(context);
+    return mlirGen.generateMLIR(ast);
+}
+
+bool SmolluParser::parseAndEmitAST(const std::string &source, std::ostream &out) {
+    SmolluASTNode ast = parseToAST(source);
+    if (ast.type.empty()) {
+        return false;
+    }
+
+    out << "\n=== AST Structure ===\n";
+    SmolluASTParser astParser;
+    astParser.printAST(ast, out);
+    out << "=== End AST ===\n\n";
+    return true;
+}
+
+ModuleOp SmolluParser::parseAndEmitMLIR(const std::string &source, bool printAST, std::ostream &out) {
+    // First parse to AST
+    SmolluASTNode ast = parseToAST(source);
+    if (ast.type.empty()) {
+        return nullptr;
+    }
+
+    // Optionally print AST
+    if (printAST) {
+        out << "\n=== AST Structure ===\n";
+        SmolluASTParser astParser;
+        astParser.printAST(ast, out);
+        out << "=== End AST ===\n\n";
+    }
+
+    if (mode != CompilationMode::MLIR_MODULE) {
+        std::cerr << "Error: MLIR generation not available in AST_ONLY mode\n";
+        return nullptr;
+    }
+
+    // Generate MLIR from AST
+    SmolluMLIRGenerator mlirGen(context);
+    return mlirGen.generateMLIR(ast);
+}
+
+
+mlir::ModuleOp parseSmolluToMLIR(mlir::MLIRContext *context, const char *source) {
+    SmolluParser parser(context, CompilationMode::MLIR_MODULE);
+    return parser.parseAndEmitMLIR(std::string(source), true); // Print AST for legacy behavior
+}
+
+bool parseSmolluToAST(const char *source) {
+    // Create a dummy context for AST-only parsing
+    mlir::MLIRContext context;
+    SmolluParser parser(&context, CompilationMode::AST_ONLY);
+    return parser.parseAndEmitAST(std::string(source));
+}
+
+mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST) {
+    SmolluParser parser(context, CompilationMode::MLIR_MODULE);
+    return parser.parseAndEmitMLIR(std::string(source), emitAST);
+}
