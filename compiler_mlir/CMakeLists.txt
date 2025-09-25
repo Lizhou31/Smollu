@@ -88,7 +88,7 @@ target_link_libraries(SmolluCodeGen
 
 # Compiler executable
 add_executable(smollu-mlir-compiler
-    tools/smollu-mlir-compiler.cpp
+    src/smollu-mlir-compiler.cpp
 )
 target_link_libraries(smollu-mlir-compiler
     SmolluParser

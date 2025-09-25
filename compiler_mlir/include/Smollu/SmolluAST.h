@@ -63,6 +63,7 @@ private:
     SmolluASTNode parseAssignment(bool isLocal);
     SmolluASTNode parseExpression();
     SmolluASTNode parseExpressionStatement();
+    SmolluASTNode parseReturnStatement();
 
     // Expression parsing with precedence
     SmolluASTNode parseLogicOr();
@@ -83,6 +84,9 @@ private:
     // Native calls
     SmolluASTNode parseNativeCall();
     SmolluASTNode parseNativeCallExpression();
+
+    // Function definitions
+    SmolluASTNode parseFunctionDefinition();
 
     // Utility
     void printIndent(std::ostream &out, int depth) const;

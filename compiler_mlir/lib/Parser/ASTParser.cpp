@@ -22,12 +22,27 @@ mlir::smollu::SmolluASTNode SmolluASTParser::parseSourceFile(const std::string &
     // Initialize first token
     parserAdvance();
 
+    // Parse init block
+    if (!parseInitBlock()) {
+        std::cout << "ERROR: Failed to parse init block\n";
+        lexer_free(&lex);
+        return SmolluASTNode(""); // Error
+    }
+
     // Parse main block only
     if (!parseMainBlock()) {
         std::cout << "ERROR: Failed to parse main block\n";
         lexer_free(&lex);
         return SmolluASTNode(""); // Error
     }
+
+    // Parse functions block
+    if (!parseFunctionsBlock()) {
+        std::cout << "ERROR: Failed to parse functions block\n";
+        lexer_free(&lex);
+        return SmolluASTNode(""); // Error
+    }
+
 
     lexer_free(&lex);
     return astRoot;
@@ -191,6 +206,12 @@ SmolluASTNode SmolluASTParser::parseStatement() {
 
         case TOK_KW_NATIVE:
             return parseNativeCall();
+
+        case TOK_KW_FUNCTION:
+            return parseFunctionDefinition();
+
+        case TOK_KW_RETURN:
+            return parseReturnStatement();
 
         default:
             // Expression statement
@@ -484,6 +505,57 @@ SmolluASTNode SmolluASTParser::parseIfStatement() {
     }
 
     return ifNode;
+}
+
+SmolluASTNode SmolluASTParser::parseFunctionDefinition() {
+    Token tok = current;
+    parserAdvance(); // consume 'function'
+
+    // expect function name
+    if (!parserCheck(TOK_IDENTIFIER)) {
+        return SmolluASTNode(""); // Error
+    }
+
+    SmolluASTNode functionNode("FunctionDefinition", tok.line, tok.column);
+    functionNode.value = std::string(current.lexeme);
+    parserAdvance(); // consume function name
+
+    // expect '('
+    parserExpected(TOK_LPAREN, "(");
+
+    // Parse arguments
+    if (!parserCheck(TOK_RPAREN)) {
+        do {
+            SmolluASTNode arg = parseExpression();
+            if (arg.type.empty()) return SmolluASTNode("");
+            functionNode.children.push_back(arg);
+        } while (parserMatch(TOK_COMMA));
+    }
+
+    // expect ')'
+    parserExpected(TOK_RPAREN, ")");
+
+    // parse function body
+    SmolluASTNode body = parseBlock();
+    if (body.type.empty()) return SmolluASTNode("");
+    functionNode.children.push_back(body);
+
+    return functionNode;
+}
+
+SmolluASTNode SmolluASTParser::parseReturnStatement() {
+    Token tok = current;
+    parserAdvance(); // consume 'return'
+
+    SmolluASTNode returnNode("ReturnStatement", tok.line, tok.column);
+
+    SmolluASTNode exprNode = parseExpression();
+    if (exprNode.type.empty()) return SmolluASTNode("");
+    returnNode.children.push_back(exprNode);
+
+    parserExpected(TOK_SEMICOLON, ";");
+
+    return returnNode;
 }
 
 SmolluASTNode SmolluASTParser::parseBlock() {
