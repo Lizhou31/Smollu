@@ -9,6 +9,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "Smollu/SmolluDialect.h"
 #include "Smollu/SmolluParser.h"
+#include "llvm/Support/raw_ostream.h"
 
 #include <iostream>
 #include <fstream>
@@ -38,6 +39,7 @@ void printUsage(const char *progName) {
     std::cout << "Options:\n";
     std::cout << "  -o <file>      Output bytecode file\n";
     std::cout << "  --emit-ast     Emit AST only (no bytecode generation)\n";
+    std::cout << "  --emit-mlir    Emit MLIR representation to .mlir file\n";
     std::cout << "  -h, --help     Show this help message\n";
 }
 
@@ -50,6 +52,7 @@ int main(int argc, char **argv) {
     std::string inputFile;
     std::string outputFile;
     bool emitASTOnly = false;
+    bool emitMLIR = false;
 
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
@@ -67,6 +70,8 @@ int main(int argc, char **argv) {
             }
         } else if (arg == "--emit-ast") {
             emitASTOnly = true;
+        } else if (arg == "--emit-mlir") {
+            emitMLIR = true;
         } else if (inputFile.empty()) {
             inputFile = arg;
         } else {
@@ -80,7 +85,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (!emitASTOnly && outputFile.empty()) {
+    if (!emitASTOnly && !emitMLIR && outputFile.empty()) {
         std::cerr << "Error: No output file specified (-o required for bytecode generation)\n";
         return 1;
     }
@@ -103,19 +108,47 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // MLIR + bytecode mode
+    // MLIR mode
     // Initialize MLIR
     MLIRContext context;
     context.loadDialect<mlir::smollu::SmolluDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
 
     // Parse Smollu source to MLIR
-    mlir::ModuleOp module = parseSmolluWithMode(&context, sourceCode.c_str(), true);
+    mlir::ModuleOp module = parseSmolluWithMode(&context, sourceCode.c_str(), !emitMLIR);
     if (!module) {
         std::cerr << "Error: Failed to parse source file\n";
         return 1;
     }
     std::cout << "Module parsed successfully\n";
+
+    if (emitMLIR) {
+        // Generate MLIR output file name
+        std::string mlirFile = inputFile;
+        size_t lastDot = mlirFile.find_last_of('.');
+        if (lastDot != std::string::npos) {
+            mlirFile = mlirFile.substr(0, lastDot);
+        }
+        mlirFile += ".mlir";
+
+        // Write MLIR to file
+        std::ofstream outFile(mlirFile);
+        if (!outFile) {
+            std::cerr << "Error: Could not create output file " << mlirFile << "\n";
+            return 1;
+        }
+
+        // Print MLIR module to file
+        std::string mlirStr;
+        llvm::raw_string_ostream strStream(mlirStr);
+        module.print(strStream);
+        strStream.flush();
+        outFile << mlirStr;
+        outFile.close();
+
+        std::cout << "Successfully generated MLIR to " << mlirFile << "\n";
+        return 0;
+    }
 
     std::cout << "Generating bytecode...\n";
 

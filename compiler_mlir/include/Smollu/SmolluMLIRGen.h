@@ -39,7 +39,10 @@ public:
 
 private:
     // AST to MLIR conversion methods
+    void generateInitBlock(const SmolluASTNode &initNode);
     void generateMainBlock(const SmolluASTNode &mainNode);
+    void generateFunctionsBlock(const SmolluASTNode &functionsNode);
+    void generateFunctionDefinition(const SmolluASTNode &funcDef);
     void generateStatement(const SmolluASTNode &stmt);
     void generateAssignment(const SmolluASTNode &assign, bool isLocal);
     Value generateExpression(const SmolluASTNode &expr);
@@ -47,10 +50,13 @@ private:
     void generateIfStatement(const SmolluASTNode &ifStmt);
     void generateBlock(const SmolluASTNode &block);
     void generateNativeCall(const SmolluASTNode &nativeCall);
+    void generateReturnStatement(const SmolluASTNode &returnStmt);
+    Value generateFunctionCall(const SmolluASTNode &funcCall);
 
     // Helper methods
     uint8_t getOrCreateGlobalVar(const std::string &name);
     uint8_t getOrCreateLocalVar(const std::string &name);
+    void clearLocalVars(); // Clear local variables when entering new function scope
 };
 
 } // namespace smollu

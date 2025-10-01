@@ -44,6 +44,15 @@ def Smollu_DivOp : Smollu_Op<"div", [Pure]> {
   let results = (outs AnyType:$result);
 }
 
+def Smollu_ModOp : Smollu_Op<"mod", [Pure]> {
+  let summary = "Integer modulo";
+  let description = [{
+    Performs modulo operation on integers.
+  }];
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs AnyType:$result);
+}
+
 //===----------------------------------------------------------------------===//
 // Comparison operations
 //===----------------------------------------------------------------------===//
@@ -81,6 +90,37 @@ def Smollu_GtOp : Smollu_Op<"gt", [Pure]> {
 def Smollu_GeOp : Smollu_Op<"ge", [Pure]> {
   let summary = "Greater than or equal comparison";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
+
+//===----------------------------------------------------------------------===//
+// Logical operations
+//===----------------------------------------------------------------------===//
+
+def Smollu_AndOp : Smollu_Op<"and", [Pure]> {
+  let summary = "Logical AND";
+  let description = [{
+    Performs logical AND operation on boolean values.
+  }];
+  let arguments = (ins I1:$lhs, I1:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Smollu_OrOp : Smollu_Op<"or", [Pure]> {
+  let summary = "Logical OR";
+  let description = [{
+    Performs logical OR operation on boolean values.
+  }];
+  let arguments = (ins I1:$lhs, I1:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Smollu_NotOp : Smollu_Op<"not", [Pure]> {
+  let summary = "Logical NOT";
+  let description = [{
+    Performs logical NOT operation on a boolean value.
+  }];
+  let arguments = (ins I1:$operand);
   let results = (outs I1:$result);
 }
 
@@ -172,6 +212,27 @@ def Smollu_WhileOp : Smollu_Op<"while", [NoTerminator]> {
 }
 
 //===----------------------------------------------------------------------===//
+// Function calls
+//===----------------------------------------------------------------------===//
+
+def Smollu_CallOp : Smollu_Op<"call"> {
+  let summary = "Function call";
+  let description = [{
+    Calls a user-defined function with arguments.
+  }];
+  let arguments = (ins FlatSymbolRefAttr:$callee, Variadic<AnyType>:$args);
+  let results = (outs Optional<AnyType>:$result);
+}
+
+def Smollu_ReturnOp : Smollu_Op<"return", [Terminator]> {
+  let summary = "Return from function";
+  let description = [{
+    Returns a value from a function.
+  }];
+  let arguments = (ins Optional<AnyType>:$value);
+}
+
+//===----------------------------------------------------------------------===//
 // Native function calls
 //===----------------------------------------------------------------------===//
 
@@ -181,6 +242,15 @@ def Smollu_PrintOp : Smollu_Op<"print"> {
     Calls the native print function with variable arguments.
   }];
   let arguments = (ins Variadic<AnyType>:$args);
+}
+
+def Smollu_NativeCallOp : Smollu_Op<"native_call"> {
+  let summary = "Generic native function call";
+  let description = [{
+    Calls a native function by name with arguments.
+  }];
+  let arguments = (ins StrAttr:$name, Variadic<AnyType>:$args);
+  let results = (outs Optional<AnyType>:$result);
 }
 
 //===----------------------------------------------------------------------===//
