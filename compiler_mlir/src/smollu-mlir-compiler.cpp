@@ -9,6 +9,7 @@
 #include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "Smollu/SmolluDialect.h"
 #include "Smollu/SmolluParser.h"
+#include "Smollu/SmolluASMEmitter.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <iostream>
@@ -40,6 +41,7 @@ void printUsage(const char *progName) {
     std::cout << "  -o <file>      Output bytecode file\n";
     std::cout << "  --emit-ast     Emit AST only (no bytecode generation)\n";
     std::cout << "  --emit-mlir    Emit MLIR representation to .mlir file\n";
+    std::cout << "  --emit-asm     Emit assembly representation to .smolasm file\n";
     std::cout << "  -h, --help     Show this help message\n";
 }
 
@@ -53,6 +55,7 @@ int main(int argc, char **argv) {
     std::string outputFile;
     bool emitASTOnly = false;
     bool emitMLIR = false;
+    bool emitASM = false;
 
     // Parse command line arguments
     for (int i = 1; i < argc; ++i) {
@@ -72,6 +75,8 @@ int main(int argc, char **argv) {
             emitASTOnly = true;
         } else if (arg == "--emit-mlir") {
             emitMLIR = true;
+        } else if (arg == "--emit-asm") {
+            emitASM = true;
         } else if (inputFile.empty()) {
             inputFile = arg;
         } else {
@@ -85,7 +90,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (!emitASTOnly && !emitMLIR && outputFile.empty()) {
+    if (!emitASTOnly && !emitMLIR && !emitASM && outputFile.empty()) {
         std::cerr << "Error: No output file specified (-o required for bytecode generation)\n";
         return 1;
     }
@@ -115,7 +120,7 @@ int main(int argc, char **argv) {
     context.loadDialect<mlir::func::FuncDialect>();
 
     // Parse Smollu source to MLIR
-    mlir::ModuleOp module = parseSmolluWithMode(&context, sourceCode.c_str(), !emitMLIR);
+    mlir::ModuleOp module = parseSmolluWithMode(&context, sourceCode.c_str(), !emitMLIR && !emitASM);
     if (!module) {
         std::cerr << "Error: Failed to parse source file\n";
         return 1;
@@ -147,6 +152,25 @@ int main(int argc, char **argv) {
         outFile.close();
 
         std::cout << "Successfully generated MLIR to " << mlirFile << "\n";
+        return 0;
+    }
+
+    if (emitASM) {
+        // Generate ASM output file name
+        std::string asmFile = inputFile;
+        size_t lastDot = asmFile.find_last_of('.');
+        if (lastDot != std::string::npos) {
+            asmFile = asmFile.substr(0, lastDot);
+        }
+        asmFile += ".smolasm";
+
+        // Emit assembly
+        if (!mlir::smollu::emitASMFromMLIR(module, asmFile.c_str())) {
+            std::cerr << "Error: Failed to emit assembly\n";
+            return 1;
+        }
+
+        std::cout << "Successfully generated assembly to " << asmFile << "\n";
         return 0;
     }
 

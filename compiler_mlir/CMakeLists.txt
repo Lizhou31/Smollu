@@ -78,6 +78,7 @@ target_link_libraries(SmolluParser
 # CodeGen library
 add_library(SmolluCodeGen
     lib/CodeGen/BytecodeEmitter.cpp
+    lib/CodeGen/ASMEmitter.cpp
 )
 target_link_libraries(SmolluCodeGen
     SmolluDialect
