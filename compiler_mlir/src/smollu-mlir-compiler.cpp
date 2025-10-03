@@ -7,7 +7,8 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "Smollu/SmolluDialect.h"
+#include "Smollu/SmolDialect.h"
+#include "Smollu/SmolOps.h"
 #include "Smollu/SmolluParser.h"
 #include "Smollu/SmolluASMEmitter.h"
 #include "llvm/Support/raw_ostream.h"
@@ -40,6 +41,7 @@ void printUsage(const char *progName) {
     std::cout << "Options:\n";
     std::cout << "  -o <file>      Output bytecode file\n";
     std::cout << "  --emit-ast     Emit AST only (no bytecode generation)\n";
+    std::cout << "  --emit-smol    Emit high-level Smol dialect MLIR to .smol.mlir file\n";
     std::cout << "  --emit-mlir    Emit MLIR representation to .mlir file\n";
     std::cout << "  --emit-asm     Emit assembly representation to .smolasm file\n";
     std::cout << "  -h, --help     Show this help message\n";
@@ -54,6 +56,7 @@ int main(int argc, char **argv) {
     std::string inputFile;
     std::string outputFile;
     bool emitASTOnly = false;
+    bool emitSmol = false;
     bool emitMLIR = false;
     bool emitASM = false;
 
@@ -73,6 +76,8 @@ int main(int argc, char **argv) {
             }
         } else if (arg == "--emit-ast") {
             emitASTOnly = true;
+        } else if (arg == "--emit-smol") {
+            emitSmol = true;
         } else if (arg == "--emit-mlir") {
             emitMLIR = true;
         } else if (arg == "--emit-asm") {
@@ -90,7 +95,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    if (!emitASTOnly && !emitMLIR && !emitASM && outputFile.empty()) {
+    if (!emitASTOnly && !emitSmol && !emitMLIR && !emitASM && outputFile.empty()) {
         std::cerr << "Error: No output file specified (-o required for bytecode generation)\n";
         return 1;
     }
@@ -113,14 +118,53 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // MLIR mode
+    if (emitSmol) {
+        // High-level Smol dialect mode
+        MLIRContext context;
+        context.loadDialect<mlir::smol::SmolDialect>();
+        context.loadDialect<mlir::func::FuncDialect>();
+
+        // Parse to Smol dialect
+        mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), true);
+        if (!module) {
+            std::cerr << "Error: Failed to parse source file\n";
+            return 1;
+        }
+
+        // Generate output file name
+        std::string smolFile = inputFile;
+        size_t lastDot = smolFile.find_last_of('.');
+        if (lastDot != std::string::npos) {
+            smolFile = smolFile.substr(0, lastDot);
+        }
+        smolFile += ".smol.mlir";
+
+        // Write Smol dialect MLIR to file
+        std::ofstream outFile(smolFile);
+        if (!outFile) {
+            std::cerr << "Error: Could not create output file " << smolFile << "\n";
+            return 1;
+        }
+
+        std::string mlirStr;
+        llvm::raw_string_ostream strStream(mlirStr);
+        module.print(strStream);
+        strStream.flush();
+        outFile << mlirStr;
+        outFile.close();
+
+        std::cout << "Successfully generated Smol dialect MLIR to " << smolFile << "\n";
+        return 0;
+    }
+
+    // MLIR mode (currently uses Smol dialect)
     // Initialize MLIR
     MLIRContext context;
-    context.loadDialect<mlir::smollu::SmolluDialect>();
+    context.loadDialect<mlir::smol::SmolDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
 
-    // Parse Smollu source to MLIR
-    mlir::ModuleOp module = parseSmolluWithMode(&context, sourceCode.c_str(), !emitMLIR && !emitASM);
+    // Parse Smollu source to MLIR (Smol dialect)
+    mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), !emitMLIR && !emitASM);
     if (!module) {
         std::cerr << "Error: Failed to parse source file\n";
         return 1;
@@ -156,32 +200,19 @@ int main(int argc, char **argv) {
     }
 
     if (emitASM) {
-        // Generate ASM output file name
-        std::string asmFile = inputFile;
-        size_t lastDot = asmFile.find_last_of('.');
-        if (lastDot != std::string::npos) {
-            asmFile = asmFile.substr(0, lastDot);
-        }
-        asmFile += ".smolasm";
-
-        // Emit assembly
-        if (!mlir::smollu::emitASMFromMLIR(module, asmFile.c_str())) {
-            std::cerr << "Error: Failed to emit assembly\n";
-            return 1;
-        }
-
-        std::cout << "Successfully generated assembly to " << asmFile << "\n";
-        return 0;
+        std::cerr << "Error: Assembly emission is temporarily disabled\n";
+        std::cerr << "       The ASM emitter is being refactored for the new Smol dialect\n";
+        std::cerr << "       It will be re-enabled in a future phase\n";
+        return 1;
     }
 
-    std::cout << "Generating bytecode...\n";
-
-    // Emit bytecode from MLIR
-    // if (!emitBytecodeFromMLIR(module, outputFile.c_str())) {
-    //    std::cerr << "Error: Failed to emit bytecode\n";
-    //    return 1;
-    //}
-
-    std::cout << "Successfully compiled " << inputFile << " to " << outputFile << "\n";
-    return 0;
+    // Bytecode generation is temporarily disabled during refactoring
+    std::cerr << "Error: Bytecode emission is temporarily disabled\n";
+    std::cerr << "       The bytecode emitter is being refactored for the new Smol dialect\n";
+    std::cerr << "       It will be re-enabled in a future phase\n";
+    std::cerr << "\n";
+    std::cerr << "Available options:\n";
+    std::cerr << "  --emit-smol    Generate high-level Smol dialect MLIR (.smol.mlir)\n";
+    std::cerr << "  --emit-ast     Generate AST output\n";
+    return 1;
 }

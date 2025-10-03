@@ -1,26 +1,28 @@
-//===- MLIRGenerator.cpp - MLIR generator from AST -------------*- C++ -*-===//
+//===- SmolMLIRGen.cpp - MLIR generator for Smol dialect -------*- C++ -*-===//
 //
-// MLIR generator that converts Smollu AST to MLIR representation
+// Generates high-level Smol dialect MLIR from Smollu AST
 //
 //===----------------------------------------------------------------------===//
 
-#include "Smollu/SmolluMLIRGen.h"
+#include "Smollu/SmolMLIRGen.h"
+#include "Smollu/SmolOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include <iostream>
 
 using namespace mlir;
-using namespace mlir::smollu;
+using namespace mlir::smol;
 using SmolluASTNode = mlir::smollu::SmolluASTNode;
 
-SmolluMLIRGenerator::SmolluMLIRGenerator(MLIRContext *ctx)
+SmolMLIRGenerator::SmolMLIRGenerator(MLIRContext *ctx)
     : context(ctx), builder(ctx) {
-    builder.getContext()->loadDialect<SmolluDialect>();
+    builder.getContext()->loadDialect<SmolDialect>();
+    builder.getContext()->loadDialect<mlir::func::FuncDialect>();
     module = ModuleOp::create(builder.getUnknownLoc());
-    // Set insertion point to the module body
     builder.setInsertionPointToEnd(module.getBody());
 }
 
-ModuleOp SmolluMLIRGenerator::generateMLIR(const SmolluASTNode &ast) {
-    std::cout << "=== MLIR Generator: Starting generation ===\n";
+ModuleOp SmolMLIRGenerator::generateMLIR(const SmolluASTNode &ast) {
+    std::cout << "=== Smol MLIR Generator: Starting generation ===\n";
 
     // Process all top-level blocks
     for (const auto &child : ast.children) {
@@ -33,15 +35,14 @@ ModuleOp SmolluMLIRGenerator::generateMLIR(const SmolluASTNode &ast) {
         }
     }
 
-    std::cout << "=== MLIR Generation completed ===\n";
+    std::cout << "=== Smol MLIR Generation completed ===\n";
     return module;
 }
 
-void SmolluMLIRGenerator::generateMainBlock(const SmolluASTNode &mainNode) {
-    // Clear local variables for main function scope
+void SmolMLIRGenerator::generateMainBlock(const SmolluASTNode &mainNode) {
     clearLocalVars();
 
-    // Create MLIR main function
+    // Create main function using func dialect
     auto funcType = builder.getFunctionType({}, {});
     auto mainFunc = builder.create<mlir::func::FuncOp>(
         builder.getUnknownLoc(), "main", funcType);
@@ -61,7 +62,7 @@ void SmolluMLIRGenerator::generateMainBlock(const SmolluASTNode &mainNode) {
     builder.setInsertionPointToEnd(module.getBody());
 }
 
-void SmolluMLIRGenerator::generateStatement(const SmolluASTNode &stmt) {
+void SmolMLIRGenerator::generateStatement(const SmolluASTNode &stmt) {
     if (stmt.type == "Assignment") {
         generateAssignment(stmt, false);
     } else if (stmt.type == "LocalAssignment") {
@@ -82,7 +83,7 @@ void SmolluMLIRGenerator::generateStatement(const SmolluASTNode &stmt) {
     }
 }
 
-void SmolluMLIRGenerator::generateAssignment(const SmolluASTNode &assign, bool isLocal) {
+void SmolMLIRGenerator::generateAssignment(const SmolluASTNode &assign, bool isLocal) {
     std::string varName = assign.value;
 
     if (assign.children.empty()) {
@@ -90,93 +91,103 @@ void SmolluMLIRGenerator::generateAssignment(const SmolluASTNode &assign, bool i
         return;
     }
 
+    // Track variable scope
+    std::string scope = isLocal ? "local" : "global";
+    variableScopes[varName] = scope;
+
+    // Generate RHS expression
     Value rhs = generateExpression(assign.children[0]);
     if (rhs) {
-        if (isLocal) {
-            uint8_t slot = getOrCreateLocalVar(varName);
-            builder.create<SetLocalOp>(builder.getUnknownLoc(),
-                builder.getI8IntegerAttr(slot), rhs);
-        } else {
-            uint8_t slot = getOrCreateGlobalVar(varName);
-            builder.create<SetGlobalOp>(builder.getUnknownLoc(),
-                builder.getI8IntegerAttr(slot), rhs);
-        }
+        // Use smol.var_store operation
+        builder.create<VarStoreOp>(
+            builder.getUnknownLoc(),
+            builder.getStringAttr(varName),
+            rhs
+        );
     }
 }
 
-Value SmolluMLIRGenerator::generateExpression(const SmolluASTNode &expr) {
+Value SmolMLIRGenerator::generateExpression(const SmolluASTNode &expr) {
     if (expr.type == "IntLiteral") {
         int32_t val = std::stoi(expr.value);
-        return builder.create<ConstantIntOp>(builder.getUnknownLoc(),
-            builder.getI32Type(), builder.getI32IntegerAttr(val));
+        OperationState state(builder.getUnknownLoc(), ConstantIntOp::getOperationName());
+        ConstantIntOp::build(builder, state, builder.getI32Type(), builder.getI32IntegerAttr(val));
+        return builder.create(state)->getResult(0);
     } else if (expr.type == "FloatLiteral") {
         float val = std::stof(expr.value);
-        return builder.create<ConstantFloatOp>(builder.getUnknownLoc(),
-            builder.getF32Type(), builder.getF32FloatAttr(val));
+        OperationState state(builder.getUnknownLoc(), ConstantFloatOp::getOperationName());
+        ConstantFloatOp::build(builder, state, builder.getF32Type(), builder.getF32FloatAttr(val));
+        return builder.create(state)->getResult(0);
     } else if (expr.type == "BoolLiteral") {
         bool val = (expr.value == "true");
-        return builder.create<ConstantBoolOp>(builder.getUnknownLoc(),
-            builder.getI1Type(), builder.getBoolAttr(val));
+        OperationState state(builder.getUnknownLoc(), ConstantBoolOp::getOperationName());
+        ConstantBoolOp::build(builder, state, builder.getI1Type(), builder.getBoolAttr(val));
+        return builder.create(state)->getResult(0);
     } else if (expr.type == "Identifier") {
-        // Try local first, then global
-        auto localIt = localVars.find(expr.value);
-        if (localIt != localVars.end()) {
-            return builder.create<GetLocalOp>(builder.getUnknownLoc(),
-                builder.getI32Type(), builder.getI8IntegerAttr(localIt->second));
-        }
+        // Load variable using smol.var_load
+        std::string varName = expr.value;
 
-        uint8_t slot = getOrCreateGlobalVar(expr.value);
-        return builder.create<GetGlobalOp>(builder.getUnknownLoc(),
-            builder.getI32Type(), builder.getI8IntegerAttr(slot));
+        // Determine type based on context (default to i32)
+        Type resultType = builder.getI32Type();
+
+        return builder.create<VarLoadOp>(
+            builder.getUnknownLoc(),
+            resultType,
+            builder.getStringAttr(varName)
+        ).getResult();
     } else if (expr.type == "BinaryOp" && expr.children.size() == 2) {
         Value left = generateExpression(expr.children[0]);
         Value right = generateExpression(expr.children[1]);
         if (!left || !right) return nullptr;
 
+        Type resultType = left.getType();
+        // If types differ and one is float, promote to float
+        if (left.getType() != right.getType()) {
+            if (llvm::isa<FloatType>(left.getType()) || llvm::isa<FloatType>(right.getType())) {
+                resultType = builder.getF32Type();
+            }
+        }
+
         // Arithmetic operators
         if (expr.value == "+") {
-            return builder.create<AddOp>(builder.getUnknownLoc(), left.getType(), left, right);
+            return builder.create<AddOp>(builder.getUnknownLoc(), resultType, left, right).getResult();
         } else if (expr.value == "-") {
-            return builder.create<SubOp>(builder.getUnknownLoc(), left.getType(), left, right);
+            return builder.create<SubOp>(builder.getUnknownLoc(), resultType, left, right).getResult();
         } else if (expr.value == "*") {
-            return builder.create<MulOp>(builder.getUnknownLoc(), left.getType(), left, right);
+            return builder.create<MulOp>(builder.getUnknownLoc(), resultType, left, right).getResult();
         } else if (expr.value == "/") {
-            return builder.create<DivOp>(builder.getUnknownLoc(), left.getType(), left, right);
+            return builder.create<DivOp>(builder.getUnknownLoc(), resultType, left, right).getResult();
         } else if (expr.value == "%") {
-            return builder.create<ModOp>(builder.getUnknownLoc(), left.getType(), left, right);
+            return builder.create<ModOp>(builder.getUnknownLoc(), resultType, left, right).getResult();
         }
         // Comparison operators
         else if (expr.value == "<") {
-            return builder.create<LtOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<LtOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         } else if (expr.value == "<=") {
-            return builder.create<LeOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<LeOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         } else if (expr.value == ">") {
-            return builder.create<GtOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<GtOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         } else if (expr.value == ">=") {
-            return builder.create<GeOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<GeOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         } else if (expr.value == "==") {
-            return builder.create<EqOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<EqOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         } else if (expr.value == "!=") {
-            return builder.create<NeOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<NeOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         }
         // Logical operators
         else if (expr.value == "&&") {
-            return builder.create<AndOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<AndOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         } else if (expr.value == "||") {
-            return builder.create<OrOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right);
+            return builder.create<OrOp>(builder.getUnknownLoc(), builder.getI1Type(), left, right).getResult();
         }
     } else if (expr.type == "UnaryOp" && expr.children.size() == 1) {
         Value operand = generateExpression(expr.children[0]);
         if (!operand) return nullptr;
 
         if (expr.value == "-") {
-            // Create negative constant and subtract
-            Value zero = builder.create<ConstantIntOp>(builder.getUnknownLoc(),
-                operand.getType(), builder.getIntegerAttr(operand.getType(), 0));
-            return builder.create<SubOp>(builder.getUnknownLoc(), operand.getType(), zero, operand);
+            return builder.create<NegOp>(builder.getUnknownLoc(), operand.getType(), operand).getResult();
         } else if (expr.value == "!") {
-            // Logical NOT operation
-            return builder.create<NotOp>(builder.getUnknownLoc(), builder.getI1Type(), operand);
+            return builder.create<NotOp>(builder.getUnknownLoc(), builder.getI1Type(), operand).getResult();
         }
     } else if (expr.type == "NativeCall") {
         // Handle native calls in expression context
@@ -197,13 +208,12 @@ Value SmolluMLIRGenerator::generateExpression(const SmolluASTNode &expr) {
         );
         return nativeCallOp.getResult();
     } else if (expr.type == "FunctionCall") {
-        // Handle function calls
         return generateFunctionCall(expr);
     }
     return nullptr;
 }
 
-void SmolluMLIRGenerator::generateWhileStatement(const SmolluASTNode &whileStmt) {
+void SmolMLIRGenerator::generateWhileStatement(const SmolluASTNode &whileStmt) {
     if (whileStmt.children.size() < 2) {
         std::cerr << "Error: While statement missing condition or body\n";
         return;
@@ -219,8 +229,9 @@ void SmolluMLIRGenerator::generateWhileStatement(const SmolluASTNode &whileStmt)
     // Generate condition expression
     Value condValue = generateExpression(whileStmt.children[0]);
     if (condValue) {
-        // Add yield operation to return condition value
-        builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc(), ValueRange{condValue});
+        OperationState state(builder.getUnknownLoc(), YieldOp::getOperationName());
+        YieldOp::build(builder, state, ValueRange{condValue});
+        builder.create(state);
     }
 
     // Create body region
@@ -232,13 +243,15 @@ void SmolluMLIRGenerator::generateWhileStatement(const SmolluASTNode &whileStmt)
     generateBlock(whileStmt.children[1]);
 
     // Add yield operation to terminate body
-    builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc());
+    OperationState yieldState(builder.getUnknownLoc(), YieldOp::getOperationName());
+    YieldOp::build(builder, yieldState, ValueRange{});
+    builder.create(yieldState);
 
     // Restore insertion point after while
     builder.setInsertionPointAfter(whileOp);
 }
 
-void SmolluMLIRGenerator::generateIfStatement(const SmolluASTNode &ifStmt) {
+void SmolMLIRGenerator::generateIfStatement(const SmolluASTNode &ifStmt) {
     if (ifStmt.children.size() < 2) {
         std::cerr << "Error: If statement missing condition or body\n";
         return;
@@ -256,89 +269,77 @@ void SmolluMLIRGenerator::generateIfStatement(const SmolluASTNode &ifStmt) {
 
     // Generate then body
     generateBlock(ifStmt.children[1]);
-    builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc());
+    OperationState yieldState(builder.getUnknownLoc(), YieldOp::getOperationName());
+    YieldOp::build(builder, yieldState, ValueRange{});
+    builder.create(yieldState);
 
-    // Create else region if present (child index 2 or later)
+    // Create else region if present
     if (ifStmt.children.size() > 2) {
         Region &elseRegion = ifOp.getElseRegion();
         Block *elseBlock = builder.createBlock(&elseRegion);
         builder.setInsertionPointToStart(elseBlock);
 
-        // Check if it's an elif (nested IfStatement) or else block
         const auto &elseChild = ifStmt.children[2];
         if (elseChild.type == "IfStatement") {
-            // Nested elif - generate as another if statement
+            // Nested elif
             generateIfStatement(elseChild);
         } else {
             // Regular else block
             generateBlock(elseChild);
         }
-        builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc());
+        OperationState yieldState(builder.getUnknownLoc(), YieldOp::getOperationName());
+        YieldOp::build(builder, yieldState, ValueRange{});
+        builder.create(yieldState);
     }
 
     // Restore insertion point after if
     builder.setInsertionPointAfter(ifOp);
 }
 
-void SmolluMLIRGenerator::generateBlock(const SmolluASTNode &block) {
+void SmolMLIRGenerator::generateBlock(const SmolluASTNode &block) {
     for (const auto &stmt : block.children) {
         generateStatement(stmt);
     }
 }
 
-void SmolluMLIRGenerator::generateNativeCall(const SmolluASTNode &nativeCall) {
+void SmolMLIRGenerator::generateNativeCall(const SmolluASTNode &nativeCall) {
     std::vector<Value> args;
     for (const auto &child : nativeCall.children) {
         Value arg = generateExpression(child);
         if (arg) args.push_back(arg);
     }
 
-    // Use specific operations for known native functions
-    if (nativeCall.value == "print") {
-        builder.create<PrintOp>(builder.getUnknownLoc(), args);
-    } else {
-        // Generic native call for other functions
-        builder.create<NativeCallOp>(
-            builder.getUnknownLoc(),
-            TypeRange{},  // No return value in statement context
-            builder.getStringAttr(nativeCall.value),
-            args
-        );
+    // Create native call operation without return value
+    builder.create<NativeCallOp>(
+        builder.getUnknownLoc(),
+        TypeRange{},  // No return value in statement context
+        builder.getStringAttr(nativeCall.value),
+        args
+    );
+}
+
+void SmolMLIRGenerator::clearLocalVars() {
+    // Remove all local variables from scope tracking
+    for (auto it = variableScopes.begin(); it != variableScopes.end(); ) {
+        if (it->second == "local") {
+            it = variableScopes.erase(it);
+        } else {
+            ++it;
+        }
     }
 }
 
-uint8_t SmolluMLIRGenerator::getOrCreateGlobalVar(const std::string &name) {
-    auto it = globalVars.find(name);
-    if (it != globalVars.end()) {
+std::string SmolMLIRGenerator::getVarScope(const std::string &name) {
+    auto it = variableScopes.find(name);
+    if (it != variableScopes.end()) {
         return it->second;
     }
-
-    uint8_t slot = nextGlobalSlot++;
-    globalVars[name] = slot;
-    return slot;
+    return "global"; // Default to global
 }
 
-uint8_t SmolluMLIRGenerator::getOrCreateLocalVar(const std::string &name) {
-    auto it = localVars.find(name);
-    if (it != localVars.end()) {
-        return it->second;
-    }
-
-    uint8_t slot = nextLocalSlot++;
-    localVars[name] = slot;
-    return slot;
-}
-
-void SmolluMLIRGenerator::clearLocalVars() {
-    localVars.clear();
-    nextLocalSlot = 0;
-}
-
-void SmolluMLIRGenerator::generateInitBlock(const SmolluASTNode &initNode) {
-    // Clear local variables for init function scope
+void SmolMLIRGenerator::generateInitBlock(const SmolluASTNode &initNode) {
     clearLocalVars();
 
-    // Create MLIR init function (called before main)
     auto funcType = builder.getFunctionType({}, {});
     auto initFunc = builder.create<mlir::func::FuncOp>(
         builder.getUnknownLoc(), "__init", funcType);
@@ -346,20 +347,15 @@ void SmolluMLIRGenerator::generateInitBlock(const SmolluASTNode &initNode) {
     Block *entryBlock = initFunc.addEntryBlock();
     builder.setInsertionPointToStart(entryBlock);
 
-    // Generate statements in init block
     for (const auto &stmt : initNode.children) {
         generateStatement(stmt);
     }
 
-    // Add return
     builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc());
-
-    // Restore insertion point to module level
     builder.setInsertionPointToEnd(module.getBody());
 }
 
-void SmolluMLIRGenerator::generateFunctionsBlock(const SmolluASTNode &functionsNode) {
-    // Process each function definition
+void SmolMLIRGenerator::generateFunctionsBlock(const SmolluASTNode &functionsNode) {
     for (const auto &child : functionsNode.children) {
         if (child.type == "FunctionDefinition") {
             generateFunctionDefinition(child);
@@ -367,13 +363,11 @@ void SmolluMLIRGenerator::generateFunctionsBlock(const SmolluASTNode &functionsN
     }
 }
 
-void SmolluMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDef) {
+void SmolMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDef) {
     std::string funcName = funcDef.value;
-
-    // Clear local variables for new function scope
     clearLocalVars();
 
-    // Parse parameters - they are Identifier nodes before the Block
+    // Parse parameters
     std::vector<Type> paramTypes;
     size_t bodyIndex = 0;
 
@@ -383,12 +377,13 @@ void SmolluMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDe
             break;
         } else if (funcDef.children[i].type == "Identifier") {
             // Register parameter as local variable
-            getOrCreateLocalVar(funcDef.children[i].value);
-            paramTypes.push_back(builder.getI32Type()); // Default to i32
+            std::string paramName = funcDef.children[i].value;
+            variableScopes[paramName] = "local";
+            paramTypes.push_back(builder.getI32Type());
         }
     }
 
-    // Create function with return type (assuming i32 for now)
+    // Create function
     auto funcType = builder.getFunctionType(paramTypes, {builder.getI32Type()});
     auto func = builder.create<mlir::func::FuncOp>(
         builder.getUnknownLoc(), funcName, funcType);
@@ -396,24 +391,34 @@ void SmolluMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDe
     Block *entryBlock = func.addEntryBlock();
     builder.setInsertionPointToStart(entryBlock);
 
+    // Store function arguments into their corresponding variables
+    size_t argIndex = 0;
+    for (size_t i = 0; i < funcDef.children.size(); ++i) {
+        if (funcDef.children[i].type == "Identifier" && i < bodyIndex) {
+            std::string paramName = funcDef.children[i].value;
+            Value arg = entryBlock->getArgument(argIndex++);
+            builder.create<VarStoreOp>(
+                builder.getUnknownLoc(),
+                builder.getStringAttr(paramName),
+                arg
+            );
+        }
+    }
+
     // Generate function body
     if (bodyIndex < funcDef.children.size()) {
         generateBlock(funcDef.children[bodyIndex]);
     }
 
-    // Add default return if no explicit return
+    // Add default return
     builder.create<mlir::func::ReturnOp>(builder.getUnknownLoc());
-
-    // Restore insertion point to module level
     builder.setInsertionPointToEnd(module.getBody());
 }
 
-void SmolluMLIRGenerator::generateReturnStatement(const SmolluASTNode &returnStmt) {
+void SmolMLIRGenerator::generateReturnStatement(const SmolluASTNode &returnStmt) {
     if (returnStmt.children.empty()) {
-        // Return void - pass nullptr as value
         builder.create<ReturnOp>(builder.getUnknownLoc(), Value());
     } else {
-        // Return value
         Value retValue = generateExpression(returnStmt.children[0]);
         if (retValue) {
             builder.create<ReturnOp>(builder.getUnknownLoc(), retValue);
@@ -423,7 +428,7 @@ void SmolluMLIRGenerator::generateReturnStatement(const SmolluASTNode &returnStm
     }
 }
 
-Value SmolluMLIRGenerator::generateFunctionCall(const SmolluASTNode &funcCall) {
+Value SmolMLIRGenerator::generateFunctionCall(const SmolluASTNode &funcCall) {
     std::string funcName = funcCall.value;
 
     // Generate arguments
@@ -438,7 +443,7 @@ Value SmolluMLIRGenerator::generateFunctionCall(const SmolluASTNode &funcCall) {
     // Create call operation
     auto callOp = builder.create<CallOp>(
         builder.getUnknownLoc(),
-        builder.getI32Type(),  // Return type (assuming i32)
+        builder.getI32Type(),
         mlir::SymbolRefAttr::get(builder.getContext(), funcName),
         args
     );

@@ -39,35 +39,37 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/)
 # Definitions
 add_definitions(${LLVM_DEFINITIONS})
 
-# TableGen for dialect
-set(LLVM_TARGET_DEFINITIONS include/Smollu/SmolluOps.td)
-mlir_tablegen(SmolluOps.h.inc -gen-op-decls -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
-mlir_tablegen(SmolluOps.cpp.inc -gen-op-defs -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
-mlir_tablegen(SmolluDialect.h.inc -gen-dialect-decls -dialect=smollu -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
-mlir_tablegen(SmolluDialect.cpp.inc -gen-dialect-defs -dialect=smollu -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
-add_public_tablegen_target(SmolluOpsIncGen)
+# TableGen for Smol dialect (high-level, language semantics)
+set(LLVM_TARGET_DEFINITIONS include/Smollu/SmolOps.td)
+mlir_tablegen(SmolOps.h.inc -gen-op-decls -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
+mlir_tablegen(SmolOps.cpp.inc -gen-op-defs -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
+mlir_tablegen(SmolDialect.h.inc -gen-dialect-decls -dialect=smol -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
+mlir_tablegen(SmolDialect.cpp.inc -gen-dialect-defs -dialect=smol -I ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_public_tablegen_target(SmolOpsIncGen)
 
-# Dialect library
-add_library(SmolluDialect
-    lib/Dialect/SmolluDialect.cpp
+# Smol dialect library (high-level)
+add_library(SmolDialect
+    lib/Dialect/SmolDialect.cpp
 )
-target_link_libraries(SmolluDialect
+target_link_libraries(SmolDialect
     MLIRDialect
     MLIRIR
     MLIRSupport
+    MLIRControlFlowInterfaces
+    MLIRSideEffectInterfaces
 )
-target_include_directories(SmolluDialect PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
-add_dependencies(SmolluDialect SmolluOpsIncGen)
+target_include_directories(SmolDialect PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+add_dependencies(SmolDialect SmolOpsIncGen)
 
 # Parser library
 add_library(SmolluParser
     lib/Parser/Parser.cpp
     lib/Parser/ASTParser.cpp
-    lib/Parser/MLIRGenerator.cpp
+    lib/Parser/SmolMLIRGen.cpp
     lib/Parser/SmolluParser.cpp
 )
 target_link_libraries(SmolluParser
-    SmolluDialect
+    SmolDialect
     MLIRIR
     MLIRParser
     MLIRSupport
@@ -75,13 +77,12 @@ target_link_libraries(SmolluParser
     smollu_lexer
 )
 
-# CodeGen library
+# CodeGen library (temporarily disabled - will be refactored for Smol dialect)
 add_library(SmolluCodeGen
     lib/CodeGen/BytecodeEmitter.cpp
     lib/CodeGen/ASMEmitter.cpp
 )
 target_link_libraries(SmolluCodeGen
-    SmolluDialect
     MLIRIR
     MLIRSupport
     MLIRFuncDialect
@@ -94,7 +95,7 @@ add_executable(smollu-mlir-compiler
 target_link_libraries(smollu-mlir-compiler
     SmolluParser
     SmolluCodeGen
-    SmolluDialect
+    SmolDialect
     MLIRDialect
     MLIRIR
     MLIRParser

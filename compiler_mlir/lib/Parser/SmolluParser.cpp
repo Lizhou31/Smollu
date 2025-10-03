@@ -5,6 +5,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Smollu/SmolluParser.h"
+#include "Smollu/SmolMLIRGen.h"
 #include <iostream>
 
 using namespace mlir;
@@ -32,8 +33,8 @@ ModuleOp SmolluParser::parseToMLIR(const std::string &source) {
         return nullptr;
     }
 
-    // Then generate MLIR from AST
-    SmolluMLIRGenerator mlirGen(context);
+    // Generate high-level Smol dialect MLIR from AST (new approach)
+    mlir::smol::SmolMLIRGenerator mlirGen(context);
     return mlirGen.generateMLIR(ast);
 }
 
@@ -70,8 +71,8 @@ ModuleOp SmolluParser::parseAndEmitMLIR(const std::string &source, bool printAST
         return nullptr;
     }
 
-    // Generate MLIR from AST
-    SmolluMLIRGenerator mlirGen(context);
+    // Generate high-level Smol dialect MLIR from AST (new approach)
+    mlir::smol::SmolMLIRGenerator mlirGen(context);
     return mlirGen.generateMLIR(ast);
 }
 
@@ -91,4 +92,26 @@ bool parseSmolluToAST(const char *source) {
 mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST) {
     SmolluParser parser(context, CompilationMode::MLIR_MODULE);
     return parser.parseAndEmitMLIR(std::string(source), emitAST);
+}
+
+mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST) {
+    // Parse to AST
+    SmolluParser parser(context, CompilationMode::MLIR_MODULE);
+    SmolluASTNode ast = parser.parseToAST(std::string(source));
+
+    if (ast.type.empty()) {
+        return nullptr;
+    }
+
+    // Optionally print AST
+    if (emitAST) {
+        std::cout << "\n=== AST Structure ===\n";
+        SmolluASTParser astParser;
+        astParser.printAST(ast, std::cout);
+        std::cout << "=== End AST ===\n\n";
+    }
+
+    // Generate high-level Smol dialect MLIR from AST
+    mlir::smol::SmolMLIRGenerator mlirGen(context);
+    return mlirGen.generateMLIR(ast);
 }

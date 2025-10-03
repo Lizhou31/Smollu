@@ -8,7 +8,6 @@
 #define SMOLLU_PARSER_H
 
 #include "Smollu/SmolluAST.h"
-#include "Smollu/SmolluMLIRGen.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 
@@ -63,5 +62,8 @@ bool parseSmolluToAST(const char *source);
 
 // Parse Smollu source with mode selection
 mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST);
+
+// Parse Smollu source to high-level Smol dialect MLIR
+mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST);
 
 #endif // SMOLLU_PARSER_H
