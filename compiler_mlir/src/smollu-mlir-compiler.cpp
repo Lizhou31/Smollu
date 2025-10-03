@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
 
     if (emitASTOnly) {
         // AST-only mode
-        if (!parseSmolluToAST(sourceCode.c_str())) {
+        if (!parseSmolluToAST(sourceCode.c_str(), inputFile.c_str())) {
             std::cerr << "Error: Failed to parse source file\n";
             return 1;
         }
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
         context.loadDialect<mlir::func::FuncDialect>();
 
         // Parse to Smol dialect
-        mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), true);
+        mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), true, inputFile.c_str());
         if (!module) {
             std::cerr << "Error: Failed to parse source file\n";
             return 1;
@@ -148,7 +148,11 @@ int main(int argc, char **argv) {
 
         std::string mlirStr;
         llvm::raw_string_ostream strStream(mlirStr);
-        module.print(strStream);
+        // Print with debug info (source locations) - use pretty form for better readability
+        mlir::OpPrintingFlags flags;
+        flags.enableDebugInfo();
+        flags.useLocalScope();
+        module.print(strStream, flags);
         strStream.flush();
         outFile << mlirStr;
         outFile.close();
@@ -164,7 +168,7 @@ int main(int argc, char **argv) {
     context.loadDialect<mlir::func::FuncDialect>();
 
     // Parse Smollu source to MLIR (Smol dialect)
-    mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), !emitMLIR && !emitASM);
+    mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), !emitMLIR && !emitASM, inputFile.c_str());
     if (!module) {
         std::cerr << "Error: Failed to parse source file\n";
         return 1;

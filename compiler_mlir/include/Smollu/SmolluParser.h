@@ -33,7 +33,7 @@ public:
     SmolluParser(MLIRContext *ctx, CompilationMode m = CompilationMode::MLIR_MODULE);
 
     // Parse source file and return AST (always available)
-    SmolluASTNode parseToAST(const std::string &source);
+    SmolluASTNode parseToAST(const std::string &source, const std::string &filename = "<stdin>");
 
     // Parse source file and return MLIR module (only in MLIR_MODULE mode)
     ModuleOp parseToMLIR(const std::string &source);
@@ -58,12 +58,12 @@ public:
 mlir::ModuleOp parseSmolluToMLIR(mlir::MLIRContext *context, const char *source);
 
 // Parse Smollu source to AST and emit to stdout
-bool parseSmolluToAST(const char *source);
+bool parseSmolluToAST(const char *source, const char *filename = "<stdin>");
 
 // Parse Smollu source with mode selection
 mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST);
 
 // Parse Smollu source to high-level Smol dialect MLIR
-mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST);
+mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST, const char *filename = "<stdin>");
 
 #endif // SMOLLU_PARSER_H

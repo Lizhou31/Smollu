@@ -61,6 +61,17 @@ target_link_libraries(SmolDialect
 target_include_directories(SmolDialect PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(SmolDialect SmolOpsIncGen)
 
+# C++ Lexer library (with MLIR location tracking)
+add_library(SmolluLexer
+    lib/Lexer/Lexer.cpp
+)
+target_link_libraries(SmolluLexer
+    MLIRSupport
+)
+target_include_directories(SmolluLexer PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 # Parser library
 add_library(SmolluParser
     lib/Parser/Parser.cpp
@@ -69,12 +80,12 @@ add_library(SmolluParser
     lib/Parser/SmolluParser.cpp
 )
 target_link_libraries(SmolluParser
+    SmolluLexer
     SmolDialect
     MLIRIR
     MLIRParser
     MLIRSupport
     MLIRFuncDialect
-    smollu_lexer
 )
 
 # CodeGen library (temporarily disabled - will be refactored for Smol dialect)

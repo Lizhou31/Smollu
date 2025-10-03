@@ -13,6 +13,7 @@
 #include "Smollu/SmolluAST.h"
 #include <map>
 #include <string>
+#include <iostream>
 
 namespace mlir {
 namespace smol {
@@ -55,6 +56,11 @@ private:
     // Helpers
     void clearLocalVars();
     std::string getVarScope(const std::string &name);
+
+    // Location helper - convert AST node location to MLIR location
+    Location getLoc(const mlir::smollu::SmolluASTNode &node) {
+        return FileLineColLoc::get(builder.getStringAttr(node.filename), node.line, node.column);
+    }
 };
 
 } // namespace smol

@@ -16,9 +16,9 @@ SmolluParser::SmolluParser(MLIRContext *ctx, CompilationMode m)
     : context(ctx), mode(m) {
 }
 
-SmolluASTNode SmolluParser::parseToAST(const std::string &source) {
+SmolluASTNode SmolluParser::parseToAST(const std::string &source, const std::string &filename) {
     SmolluASTParser astParser;
-    return astParser.parseSourceFile(source);
+    return astParser.parseSourceFile(source, filename);
 }
 
 ModuleOp SmolluParser::parseToMLIR(const std::string &source) {
@@ -82,11 +82,20 @@ mlir::ModuleOp parseSmolluToMLIR(mlir::MLIRContext *context, const char *source)
     return parser.parseAndEmitMLIR(std::string(source), true); // Print AST for legacy behavior
 }
 
-bool parseSmolluToAST(const char *source) {
+bool parseSmolluToAST(const char *source, const char *filename) {
     // Create a dummy context for AST-only parsing
     mlir::MLIRContext context;
     SmolluParser parser(&context, CompilationMode::AST_ONLY);
-    return parser.parseAndEmitAST(std::string(source));
+    SmolluASTNode ast = parser.parseToAST(std::string(source), std::string(filename));
+    if (ast.type.empty()) {
+        return false;
+    }
+
+    std::cout << "\n=== AST Structure ===\n";
+    SmolluASTParser astParser;
+    astParser.printAST(ast, std::cout);
+    std::cout << "=== End AST ===\n\n";
+    return true;
 }
 
 mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST) {
@@ -94,10 +103,10 @@ mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *sourc
     return parser.parseAndEmitMLIR(std::string(source), emitAST);
 }
 
-mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST) {
+mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST, const char *filename) {
     // Parse to AST
     SmolluParser parser(context, CompilationMode::MLIR_MODULE);
-    SmolluASTNode ast = parser.parseToAST(std::string(source));
+    SmolluASTNode ast = parser.parseToAST(std::string(source), std::string(filename));
 
     if (ast.type.empty()) {
         return nullptr;
