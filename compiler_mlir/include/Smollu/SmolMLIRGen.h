@@ -33,6 +33,7 @@ private:
 
     // Variable tracking (for scope verification)
     std::map<std::string, std::string> variableScopes; // name -> "global" or "local"
+    std::map<std::string, Type> variableTypes; // name -> MLIR type
 
     // Top-level block generation
     void generateInitBlock(const mlir::smollu::SmolluASTNode &initNode);

@@ -88,6 +88,19 @@ target_link_libraries(SmolluParser
     MLIRFuncDialect
 )
 
+# Pass library for transformations
+add_library(SmolPasses
+    lib/Pass/PromoteNumerics.cpp
+)
+target_link_libraries(SmolPasses
+    SmolDialect
+    MLIRIR
+    MLIRPass
+    MLIRSupport
+    MLIRTransforms
+)
+target_include_directories(SmolPasses PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+
 # CodeGen library (temporarily disabled - will be refactored for Smol dialect)
 add_library(SmolluCodeGen
     lib/CodeGen/BytecodeEmitter.cpp
@@ -107,10 +120,12 @@ target_link_libraries(smollu-mlir-compiler
     SmolluParser
     SmolluCodeGen
     SmolDialect
+    SmolPasses
     MLIRDialect
     MLIRIR
     MLIRParser
     MLIRSupport
     MLIRFuncDialect
+    MLIRTransforms
     LLVMSupport
 )

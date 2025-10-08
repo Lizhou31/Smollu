@@ -7,10 +7,12 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Pass/PassManager.h"
 #include "Smollu/SmolDialect.h"
 #include "Smollu/SmolOps.h"
 #include "Smollu/SmolluParser.h"
 #include "Smollu/SmolluASMEmitter.h"
+#include "Smollu/Passes.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <iostream>
@@ -45,6 +47,19 @@ void printUsage(const char *progName) {
     std::cout << "  --emit-mlir    Emit MLIR representation to .mlir file\n";
     std::cout << "  --emit-asm     Emit assembly representation to .smolasm file\n";
     std::cout << "  -h, --help     Show this help message\n";
+}
+
+// Run the promotion pass to insert type casts for mixed arithmetic
+bool runPromotionPass(mlir::ModuleOp module) {
+    mlir::PassManager pm(module.getContext());
+    pm.addPass(mlir::smol::createPromoteNumericsPass());
+
+    if (mlir::failed(pm.run(module))) {
+        std::cerr << "Error: Failed to run type promotion pass\n";
+        return false;
+    }
+
+    return true;
 }
 
 int main(int argc, char **argv) {
@@ -131,6 +146,11 @@ int main(int argc, char **argv) {
             return 1;
         }
 
+        // Run type promotion pass
+        if (!runPromotionPass(module)) {
+            return 1;
+        }
+
         // Generate output file name
         std::string smolFile = inputFile;
         size_t lastDot = smolFile.find_last_of('.');
@@ -174,6 +194,11 @@ int main(int argc, char **argv) {
         return 1;
     }
     std::cout << "Module parsed successfully\n";
+
+    // Run type promotion pass
+    if (!runPromotionPass(module)) {
+        return 1;
+    }
 
     if (emitMLIR) {
         // Generate MLIR output file name

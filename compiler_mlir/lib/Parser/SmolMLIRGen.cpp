@@ -99,6 +99,9 @@ void SmolMLIRGenerator::generateAssignment(const SmolluASTNode &assign, bool isL
     // Generate RHS expression
     Value rhs = generateExpression(assign.children[0]);
     if (rhs) {
+        // Track variable type
+        variableTypes[varName] = rhs.getType();
+
         // Use smol.var_store operation
         builder.create<VarStoreOp>(
             getLoc(assign),
@@ -128,8 +131,16 @@ Value SmolMLIRGenerator::generateExpression(const SmolluASTNode &expr) {
         // Load variable using smol.var_load
         std::string varName = expr.value;
 
-        // Determine type based on context (default to i32)
-        Type resultType = builder.getI32Type();
+        // Determine type from tracked variable types
+        Type resultType;
+        auto it = variableTypes.find(varName);
+        if (it != variableTypes.end()) {
+            resultType = it->second;
+        } else {
+            // Variable not found, default to i32 (will fail verification if wrong)
+            std::cerr << "Warning: Variable '" << varName << "' used before assignment, defaulting to i32\n";
+            resultType = builder.getI32Type();
+        }
 
         return builder.create<VarLoadOp>(
             getLoc(expr),
@@ -398,6 +409,10 @@ void SmolMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDef)
         if (funcDef.children[i].type == "Identifier" && i < bodyIndex) {
             std::string paramName = funcDef.children[i].value;
             Value arg = entryBlock->getArgument(argIndex++);
+
+            // Track parameter type
+            variableTypes[paramName] = arg.getType();
+
             builder.create<VarStoreOp>(
                 getLoc(funcDef.children[i]),
                 builder.getStringAttr(paramName),
@@ -411,8 +426,12 @@ void SmolMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDef)
         generateBlock(funcDef.children[bodyIndex]);
     }
 
-    // Add default return
-    builder.create<mlir::func::ReturnOp>(getLoc(funcDef));
+    // Add default return only if the block doesn't already have a terminator
+    Block *currentBlock = builder.getInsertionBlock();
+    if (currentBlock && !currentBlock->empty() && !currentBlock->back().hasTrait<OpTrait::IsTerminator>()) {
+        builder.create<mlir::func::ReturnOp>(getLoc(funcDef));
+    }
+
     builder.setInsertionPointToEnd(module.getBody());
 }
 

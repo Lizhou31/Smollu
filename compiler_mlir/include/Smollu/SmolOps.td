@@ -126,6 +126,23 @@ def Smol_VarStoreOp : Smol_Op<"var_store"> {
   let arguments = (ins StrAttr:$name, AnyType:$value);
 }
 
+def Smol_CastOp : Smol_Op<"cast", [Pure]> {
+  let summary = "Type coersion";
+  let description = [{
+    Type coerses a value to a different type.
+
+    Example:
+    ```mlir
+    %1 = smol.cast %0 : i32 -> f32
+    ```
+  }];
+  let arguments = (ins AnyType:$value);
+  let results = (outs AnyType:$result);
+  let hasVerifier = 1;
+  let hasCanonicalizer = 1;
+  let assemblyFormat = "$value attr-dict `:` type($value) `to` type($result)";
+}
+
 //===----------------------------------------------------------------------===//
 // Arithmetic operations
 //===----------------------------------------------------------------------===//

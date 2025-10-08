@@ -9,6 +9,7 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/OpImplementation.h"
+#include "mlir/IR/PatternMatch.h"
 
 using namespace mlir;
 using namespace mlir::smol;
@@ -72,6 +73,38 @@ static Type getResultType(Type lhs, Type rhs) {
 
   // Otherwise, result is integer
   return IntegerType::get(lhs.getContext(), 32);
+}
+
+//===----------------------------------------------------------------------===//
+// CastOp
+//===----------------------------------------------------------------------===//
+static bool isInt(Type t){ return llvm::isa<IntegerType>(t) && t.getIntOrFloatBitWidth()!=1; }
+static bool isF(Type t){ return llvm::isa<FloatType>(t); }
+static bool isI1(Type t){ return llvm::isa<IntegerType>(t) && t.getIntOrFloatBitWidth() == 1; }
+
+LogicalResult CastOp::verify() {
+  Type src = getValue().getType(), dst = getResult().getType();
+  if (src == dst) return success();
+  auto ok =
+      (isI1(src)  && (isInt(dst) || isF(dst))) ||
+      (isInt(src) && (isInt(dst) || isF(dst))) ||
+      (isF(src)   && (isInt(dst) || isF(dst)));
+  return ok ? success() : emitOpError() << "unsupported cast " << src << " -> " << dst;
+}
+
+void CastOp::getCanonicalizationPatterns(RewritePatternSet &patterns, MLIRContext *ctx) {
+  struct FoldNoOp : OpRewritePattern<CastOp> {
+    using OpRewritePattern::OpRewritePattern;
+    LogicalResult matchAndRewrite(CastOp op, PatternRewriter &rew) const override {
+      if (op.getValue().getType() == op.getResult().getType()) {
+        op.replaceAllUsesWith(op.getValue());
+        rew.eraseOp(op);
+        return success();
+      }
+      return failure();
+    }
+  };
+  patterns.add<FoldNoOp>(ctx);
 }
 
 //===----------------------------------------------------------------------===//
