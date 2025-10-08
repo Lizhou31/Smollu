@@ -117,13 +117,14 @@ def Smol_VarStoreOp : Smol_Op<"var_store"> {
   let summary = "Store variable value";
   let description = [{
     Stores a value to a variable by name.
+    The isLocal attribute indicates if this is a local (true) or global (false) variable.
 
     Example:
     ```mlir
-    smol.var_store "x", %value : i32
+    smol.var_store "x", %value : i32 isLocal = true
     ```
   }];
-  let arguments = (ins StrAttr:$name, AnyType:$value);
+  let arguments = (ins StrAttr:$name, AnyType:$value, BoolAttr:$isLocal);
 }
 
 def Smol_CastOp : Smol_Op<"cast", [Pure]> {

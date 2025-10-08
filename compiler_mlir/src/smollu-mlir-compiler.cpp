@@ -62,6 +62,19 @@ bool runPromotionPass(mlir::ModuleOp module) {
     return true;
 }
 
+// Run the scope verification pass to check variable scope correctness
+bool runScopeVerificationPass(mlir::ModuleOp module) {
+    mlir::PassManager pm(module.getContext());
+    pm.addPass(mlir::smol::createScopeVerificationPass());
+
+    if (mlir::failed(pm.run(module))) {
+        std::cerr << "Error: Scope verification failed\n";
+        return false;
+    }
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         printUsage(argv[0]);
@@ -148,6 +161,11 @@ int main(int argc, char **argv) {
 
         // Run type promotion pass
         if (!runPromotionPass(module)) {
+            return 1;
+        }
+
+        // Run scope verification pass
+        if (!runScopeVerificationPass(module)) {
             return 1;
         }
 

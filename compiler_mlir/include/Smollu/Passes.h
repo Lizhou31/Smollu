@@ -17,6 +17,10 @@ namespace smol {
 /// This implements the Smollu language rule: "Mixed arithmetic promotes int -> float"
 std::unique_ptr<Pass> createPromoteNumericsPass();
 
+/// Create a pass that verifies variable scope correctness.
+/// Checks that variables are declared before use and respects local/global scoping rules.
+std::unique_ptr<Pass> createScopeVerificationPass();
+
 /// Register all Smollu passes
 void registerSmolPasses();
 

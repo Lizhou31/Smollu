@@ -91,6 +91,7 @@ target_link_libraries(SmolluParser
 # Pass library for transformations
 add_library(SmolPasses
     lib/Pass/PromoteNumerics.cpp
+    lib/Pass/ScopeVerification.cpp
 )
 target_link_libraries(SmolPasses
     SmolDialect

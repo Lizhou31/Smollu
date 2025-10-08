@@ -106,7 +106,8 @@ void SmolMLIRGenerator::generateAssignment(const SmolluASTNode &assign, bool isL
         builder.create<VarStoreOp>(
             getLoc(assign),
             builder.getStringAttr(varName),
-            rhs
+            rhs,
+            builder.getBoolAttr(isLocal)
         );
     }
 }
@@ -416,7 +417,8 @@ void SmolMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDef)
             builder.create<VarStoreOp>(
                 getLoc(funcDef.children[i]),
                 builder.getStringAttr(paramName),
-                arg
+                arg,
+                builder.getBoolAttr(true)  // Function parameters are always local
             );
         }
     }
