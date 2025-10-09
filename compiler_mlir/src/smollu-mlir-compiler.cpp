@@ -166,7 +166,7 @@ int main(int argc, char **argv) {
         context.loadDialect<mlir::func::FuncDialect>();
 
         // Parse to Smol dialect
-        mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), true, inputFile.c_str());
+        mlir::ModuleOp module = parseSmolluToSmolDialect(&context, sourceCode.c_str(), false, inputFile.c_str());
         if (!module) {
             std::cerr << "Error: Failed to parse source file\n";
             return 1;
