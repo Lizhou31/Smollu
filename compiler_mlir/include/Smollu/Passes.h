@@ -21,6 +21,10 @@ std::unique_ptr<Pass> createPromoteNumericsPass();
 /// Checks that variables are declared before use and respects local/global scoping rules.
 std::unique_ptr<Pass> createScopeVerificationPass();
 
+/// Create a pass that eliminates dead code and unused variables.
+/// Removes unused variable stores and pure operations with no uses.
+std::unique_ptr<Pass> createDeadCodeEliminationPass();
+
 /// Register all Smollu passes
 void registerSmolPasses();
 

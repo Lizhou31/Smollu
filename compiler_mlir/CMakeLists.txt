@@ -92,6 +92,7 @@ target_link_libraries(SmolluParser
 add_library(SmolPasses
     lib/Pass/PromoteNumerics.cpp
     lib/Pass/ScopeVerification.cpp
+    lib/Pass/DeadCodeElimination.cpp
 )
 target_link_libraries(SmolPasses
     SmolDialect

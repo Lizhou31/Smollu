@@ -83,7 +83,7 @@ def Smol_ConstantNilOp : Smol_Op<"const_nil", [Pure]> {
 // Variable operations
 //===----------------------------------------------------------------------===//
 
-def Smol_VarDeclOp : Smol_Op<"var_decl"> {
+def Smol_VarDeclOp : Smol_Op<"var_decl", [Pure]> {
   let summary = "Variable declaration";
   let description = [{
     Declares a variable with a name and scope (local or global).
@@ -99,7 +99,7 @@ def Smol_VarDeclOp : Smol_Op<"var_decl"> {
   let results = (outs AnyType:$ref);
 }
 
-def Smol_VarLoadOp : Smol_Op<"var_load"> {
+def Smol_VarLoadOp : Smol_Op<"var_load", [Pure]> {
   let summary = "Load variable value";
   let description = [{
     Loads the current value of a variable by name.

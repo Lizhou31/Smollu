@@ -75,6 +75,19 @@ bool runScopeVerificationPass(mlir::ModuleOp module) {
     return true;
 }
 
+// Run dead code elimination pass to remove unused code and variables
+bool runDeadCodeEliminationPass(mlir::ModuleOp module) {
+    mlir::PassManager pm(module.getContext());
+    pm.addPass(mlir::smol::createDeadCodeEliminationPass());
+
+    if (mlir::failed(pm.run(module))) {
+        std::cerr << "Error: Dead code elimination pass failed\n";
+        return false;
+    }
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         printUsage(argv[0]);
@@ -166,6 +179,11 @@ int main(int argc, char **argv) {
 
         // Run scope verification pass
         if (!runScopeVerificationPass(module)) {
+            return 1;
+        }
+
+        // Run dead code elimination pass
+        if (!runDeadCodeEliminationPass(module)) {
             return 1;
         }
 
