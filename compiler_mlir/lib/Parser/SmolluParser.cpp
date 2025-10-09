@@ -76,12 +76,6 @@ ModuleOp SmolluParser::parseAndEmitMLIR(const std::string &source, bool printAST
     return mlirGen.generateMLIR(ast);
 }
 
-
-mlir::ModuleOp parseSmolluToMLIR(mlir::MLIRContext *context, const char *source) {
-    SmolluParser parser(context, CompilationMode::MLIR_MODULE);
-    return parser.parseAndEmitMLIR(std::string(source), true); // Print AST for legacy behavior
-}
-
 bool parseSmolluToAST(const char *source, const char *filename) {
     // Create a dummy context for AST-only parsing
     mlir::MLIRContext context;
@@ -96,11 +90,6 @@ bool parseSmolluToAST(const char *source, const char *filename) {
     astParser.printAST(ast, std::cout);
     std::cout << "=== End AST ===\n\n";
     return true;
-}
-
-mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST) {
-    SmolluParser parser(context, CompilationMode::MLIR_MODULE);
-    return parser.parseAndEmitMLIR(std::string(source), emitAST);
 }
 
 mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST, const char *filename) {

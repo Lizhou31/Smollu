@@ -54,14 +54,8 @@ public:
 } // namespace smollu
 } // namespace mlir
 
-// Parse Smollu source to MLIR (legacy interface)
-mlir::ModuleOp parseSmolluToMLIR(mlir::MLIRContext *context, const char *source);
-
 // Parse Smollu source to AST and emit to stdout
 bool parseSmolluToAST(const char *source, const char *filename = "<stdin>");
-
-// Parse Smollu source with mode selection
-mlir::ModuleOp parseSmolluWithMode(mlir::MLIRContext *context, const char *source, bool emitAST);
 
 // Parse Smollu source to high-level Smol dialect MLIR
 mlir::ModuleOp parseSmolluToSmolDialect(mlir::MLIRContext *context, const char *source, bool emitAST, const char *filename = "<stdin>");

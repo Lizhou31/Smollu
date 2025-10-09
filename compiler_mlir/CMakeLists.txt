@@ -74,7 +74,6 @@ target_include_directories(SmolluLexer PUBLIC
 
 # Parser library
 add_library(SmolluParser
-    lib/Parser/Parser.cpp
     lib/Parser/ASTParser.cpp
     lib/Parser/SmolMLIRGen.cpp
     lib/Parser/SmolluParser.cpp
