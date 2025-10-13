@@ -12,7 +12,10 @@
 #include "mlir/IR/MLIRContext.h"
 #include "Smollu/SmolluAST.h"
 #include <map>
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
 #include <iostream>
 
 namespace mlir {
@@ -34,6 +37,12 @@ private:
     // Variable tracking (for scope verification)
     std::map<std::string, std::string> variableScopes; // name -> "global" or "local"
     std::map<std::string, Type> variableTypes; // name -> MLIR type
+
+    // Function specialization tracking
+    std::map<std::string, std::set<std::string>> functionCallSignatures; // funcName -> set of mangled names
+    std::map<std::string, std::map<std::string, std::vector<Type>>> functionCallArgTypes; // funcName -> (mangled name -> arg types)
+    std::map<std::string, const mlir::smollu::SmolluASTNode*> functionDefinitions; // funcName -> AST node pointer
+    std::set<std::string> specializedFunctions; // set of mangled names that have been generated
 
     // Top-level block generation
     void generateInitBlock(const mlir::smollu::SmolluASTNode &initNode);
@@ -57,6 +66,12 @@ private:
     // Helpers
     void clearLocalVars();
     std::string getVarScope(const std::string &name);
+
+    // Type inference and function specialization helpers
+    void collectFunctionCallSignatures(const mlir::smollu::SmolluASTNode &node);
+    Type inferExpressionType(const mlir::smollu::SmolluASTNode &expr);
+    std::string mangleFunctionName(const std::string &name, const std::vector<Type> &argTypes);
+    void generateSpecializedFunction(const std::string &funcName, const std::vector<Type> &argTypes);
 
     // Location helper - convert AST node location to MLIR location
     Location getLoc(const mlir::smollu::SmolluASTNode &node) {

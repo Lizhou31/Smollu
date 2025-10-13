@@ -10,6 +10,8 @@
 #include "mlir/IR/DialectImplementation.h"
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/SymbolTable.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 
 using namespace mlir;
 using namespace mlir::smol;
@@ -377,7 +379,25 @@ LogicalResult WhileOp::verify() {
 //===----------------------------------------------------------------------===//
 
 LogicalResult CallOp::verify() {
-  // Basic verification - callee symbol ref should be valid
-  // Additional verification would check if the function exists in the symbol table
+  // Look up the function in the symbol table
+  auto funcOp = dyn_cast_or_null<mlir::func::FuncOp>(
+      mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getCalleeAttr()));
+
+  if (!funcOp) {
+    return emitOpError("callee function '") << getCallee() << "' not found";
+  }
+
+  // Get the function type
+  auto funcType = funcOp.getFunctionType();
+
+  // Verify argument count matches
+  size_t expectedArgs = funcType.getNumInputs();
+  size_t actualArgs = getArgs().size();
+
+  if (actualArgs != expectedArgs) {
+    return emitOpError("argument count mismatch: expected ")
+           << expectedArgs << " arguments but got " << actualArgs;
+  }
+
   return success();
 }

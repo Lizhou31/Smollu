@@ -25,14 +25,25 @@ SmolMLIRGenerator::SmolMLIRGenerator(MLIRContext *ctx)
 ModuleOp SmolMLIRGenerator::generateMLIR(const SmolluASTNode &ast) {
     std::cout << "=== Smol MLIR Generator: Starting generation ===\n";
 
-    // Process all top-level blocks
+    // Phase 1: Type inference pass - collect all function call signatures
+    collectFunctionCallSignatures(ast);
+
+    // Phase 2: Generate MLIR code
+    std::cout << "=== Generating MLIR ===\n";
+
+    // Generate functions FIRST so they're available when main/init are generated
+    for (const auto &child : ast.children) {
+        if (child.type == "FunctionsBlock") {
+            generateFunctionsBlock(child);
+        }
+    }
+
+    // Then generate init and main blocks
     for (const auto &child : ast.children) {
         if (child.type == "InitBlock") {
             generateInitBlock(child);
         } else if (child.type == "MainBlock") {
             generateMainBlock(child);
-        } else if (child.type == "FunctionsBlock") {
-            generateFunctionsBlock(child);
         }
     }
 
@@ -369,11 +380,23 @@ void SmolMLIRGenerator::generateInitBlock(const SmolluASTNode &initNode) {
 }
 
 void SmolMLIRGenerator::generateFunctionsBlock(const SmolluASTNode &functionsNode) {
-    for (const auto &child : functionsNode.children) {
-        if (child.type == "FunctionDefinition") {
-            generateFunctionDefinition(child);
+    // Use selective specialization: generate specialized versions based on collected call signatures
+    for (const auto &funcEntry : functionCallSignatures) {
+        const std::string &funcName = funcEntry.first;
+        const std::set<std::string> &mangledNames = funcEntry.second;
+
+        std::cout << "Generating " << mangledNames.size() << " specialized version(s) for function " << funcName << "\n";
+
+        // Generate a specialized function for each unique call signature
+        for (const std::string &mangledName : mangledNames) {
+            // Look up the argument types for this mangled name
+            const std::vector<Type> &argTypes = functionCallArgTypes[funcName][mangledName];
+            generateSpecializedFunction(funcName, argTypes);
         }
     }
+
+    // Note: We no longer call generateFunctionDefinition for each child
+    // Instead, we generate specialized versions based on actual usage
 }
 
 void SmolMLIRGenerator::generateFunctionDefinition(const SmolluASTNode &funcDef) {
@@ -453,22 +476,231 @@ void SmolMLIRGenerator::generateReturnStatement(const SmolluASTNode &returnStmt)
 Value SmolMLIRGenerator::generateFunctionCall(const SmolluASTNode &funcCall) {
     std::string funcName = funcCall.value;
 
-    // Generate arguments
+    // Generate arguments and infer their types
     std::vector<Value> args;
+    std::vector<Type> argTypes;
     for (const auto &arg : funcCall.children) {
         Value argValue = generateExpression(arg);
         if (argValue) {
             args.push_back(argValue);
+            argTypes.push_back(argValue.getType());
         }
     }
 
-    // Create call operation
+    // Look up specialized function name
+    std::string mangledName = mangleFunctionName(funcName, argTypes);
+    if (specializedFunctions.find(mangledName) == specializedFunctions.end()) {
+        std::cerr << "Error: No specialized function found for " << mangledName << "\n";
+        // Fall back to original name (will fail verification)
+        mangledName = funcName;
+    }
+
+    // Create call operation with appropriate return type
+    // For now, assume i32 return type (will be improved with return type tracking)
     auto callOp = builder.create<CallOp>(
         getLoc(funcCall),
         builder.getI32Type(),
-        mlir::SymbolRefAttr::get(builder.getContext(), funcName),
+        mlir::SymbolRefAttr::get(builder.getContext(), mangledName),
         args
     );
 
     return callOp.getResult();
+}
+
+std::string SmolMLIRGenerator::mangleFunctionName(const std::string &name, const std::vector<Type> &argTypes) {
+    if (argTypes.empty()) {
+        return name + "_void";
+    }
+
+    std::string mangled = name;
+    for (Type t : argTypes) {
+        mangled += "_";
+        if (t.isInteger(32)) {
+            mangled += "i32";
+        } else if (t.isInteger(1)) {
+            mangled += "i1";
+        } else if (t.isF32()) {
+            mangled += "f32";
+        } else {
+            mangled += "unknown";
+        }
+    }
+    return mangled;
+}
+
+Type SmolMLIRGenerator::inferExpressionType(const SmolluASTNode &expr) {
+    if (expr.type == "IntLiteral") {
+        return builder.getI32Type();
+    } else if (expr.type == "FloatLiteral") {
+        return builder.getF32Type();
+    } else if (expr.type == "BoolLiteral") {
+        return builder.getI1Type();
+    } else if (expr.type == "Identifier") {
+        std::string varName = expr.value;
+        auto it = variableTypes.find(varName);
+        if (it != variableTypes.end()) {
+            return it->second;
+        } else {
+            // Default to i32 if unknown
+            return builder.getI32Type();
+        }
+    } else if (expr.type == "BinaryOp") {
+        if (expr.children.size() == 2) {
+            Type leftType = inferExpressionType(expr.children[0]);
+            Type rightType = inferExpressionType(expr.children[1]);
+
+            // Type promotion rules: if either is float, result is float
+            if (llvm::isa<FloatType>(leftType) || llvm::isa<FloatType>(rightType)) {
+                return builder.getF32Type();
+            }
+
+            // Comparison operators return bool
+            if (expr.value == "<" || expr.value == "<=" || expr.value == ">" ||
+                expr.value == ">=" || expr.value == "==" || expr.value == "!=") {
+                return builder.getI1Type();
+            }
+
+            // Logical operators return bool
+            if (expr.value == "&&" || expr.value == "||") {
+                return builder.getI1Type();
+            }
+
+            // Arithmetic operators: return promoted type
+            return leftType;
+        }
+    } else if (expr.type == "UnaryOp") {
+        if (expr.children.size() == 1) {
+            if (expr.value == "!") {
+                return builder.getI1Type();
+            } else {
+                return inferExpressionType(expr.children[0]);
+            }
+        }
+    } else if (expr.type == "FunctionCall") {
+        // For now, assume i32 (will be improved later)
+        return builder.getI32Type();
+    }
+
+    // Default to i32
+    return builder.getI32Type();
+}
+
+void SmolMLIRGenerator::collectFunctionCallSignatures(const SmolluASTNode &node) {
+    // Track variable assignments during the first pass
+    if (node.type == "Assignment" || node.type == "LocalAssignment") {
+        if (!node.children.empty()) {
+            std::string varName = node.value;
+            Type varType = inferExpressionType(node.children[0]);
+            variableTypes[varName] = varType;
+        }
+    }
+
+    // Recursively walk the AST to find all function calls
+    if (node.type == "FunctionCall") {
+        std::string funcName = node.value;
+        std::vector<Type> argTypes;
+
+        // Infer argument types from the AST
+        for (const auto &arg : node.children) {
+            Type argType = inferExpressionType(arg);
+            argTypes.push_back(argType);
+        }
+
+        // Generate mangled name and record the signature
+        std::string mangledName = mangleFunctionName(funcName, argTypes);
+        functionCallSignatures[funcName].insert(mangledName);
+        functionCallArgTypes[funcName][mangledName] = argTypes;
+        std::cout << "Collected call signature: " << mangledName << " (" << argTypes.size() << " args)\n";
+    }
+
+    // Store function definitions for later specialization
+    if (node.type == "FunctionDefinition") {
+        std::string funcName = node.value;
+        functionDefinitions[funcName] = &node;
+        std::cout << "Stored function definition: " << funcName << "\n";
+    }
+
+    // Recursively process children
+    for (const auto &child : node.children) {
+        collectFunctionCallSignatures(child);
+    }
+}
+
+void SmolMLIRGenerator::generateSpecializedFunction(const std::string &funcName, const std::vector<Type> &argTypes) {
+    // Get the original function definition
+    auto it = functionDefinitions.find(funcName);
+    if (it == functionDefinitions.end()) {
+        std::cerr << "Error: Function definition not found for " << funcName << "\n";
+        return;
+    }
+
+    const SmolluASTNode &funcDef = *(it->second);
+    std::string mangledName = mangleFunctionName(funcName, argTypes);
+
+    std::cout << "Generating specialized function: " << mangledName << "\n";
+
+    // Clear local variables for this function
+    clearLocalVars();
+
+    // Parse parameters and match with specialized types
+    std::vector<std::string> paramNames;
+    size_t bodyIndex = 0;
+
+    for (size_t i = 0; i < funcDef.children.size(); ++i) {
+        if (funcDef.children[i].type == "Block") {
+            bodyIndex = i;
+            break;
+        } else if (funcDef.children[i].type == "Identifier") {
+            paramNames.push_back(funcDef.children[i].value);
+        }
+    }
+
+    // Verify parameter count matches
+    if (paramNames.size() != argTypes.size()) {
+        std::cerr << "Error: Parameter count mismatch for " << funcName << "\n";
+        return;
+    }
+
+    // Register parameters with their specialized types
+    for (size_t i = 0; i < paramNames.size(); ++i) {
+        variableScopes[paramNames[i]] = "local";
+        variableTypes[paramNames[i]] = argTypes[i];
+    }
+
+    // Create function with specialized signature
+    // For now, assume i32 return type - we'll infer it from the function body
+    auto funcType = builder.getFunctionType(argTypes, {builder.getI32Type()});
+    auto func = builder.create<mlir::func::FuncOp>(
+        getLoc(funcDef), mangledName, funcType);
+
+    Block *entryBlock = func.addEntryBlock();
+    builder.setInsertionPointToStart(entryBlock);
+
+    // Store function arguments into their corresponding variables
+    for (size_t i = 0; i < paramNames.size(); ++i) {
+        Value arg = entryBlock->getArgument(i);
+        builder.create<VarStoreOp>(
+            getLoc(funcDef.children[i]),
+            builder.getStringAttr(paramNames[i]),
+            arg,
+            builder.getBoolAttr(true)  // Function parameters are always local
+        );
+    }
+
+    // Generate function body
+    if (bodyIndex < funcDef.children.size()) {
+        generateBlock(funcDef.children[bodyIndex]);
+    }
+
+    // Add default return if needed
+    Block *currentBlock = builder.getInsertionBlock();
+    if (currentBlock && !currentBlock->empty() && !currentBlock->back().hasTrait<OpTrait::IsTerminator>()) {
+        builder.create<mlir::func::ReturnOp>(getLoc(funcDef));
+    }
+
+    // Restore insertion point to module level
+    builder.setInsertionPointToEnd(module.getBody());
+
+    // Record this specialized function
+    specializedFunctions.insert(mangledName);
 }
