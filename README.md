@@ -110,6 +110,101 @@ cargo run "../build/demo/LED matrix demo/basic_led_demo.smolbc"
 - **GUI Controls**: Configurable LED size, spacing, colors, and grid display
 - **Hardware Timing**: Accurate delay simulation for embedded system development
 
+**Available LED Matrix Native Functions:**
+- `led_matrix_init(rows, cols)` - Initialize matrix (1-64 x 1-64)
+- `led_set_color(row, col, r, g, b)` - Set LED with RGB color (0-255)
+- `led_set(row, col, state)` - Set LED on/off (0=off, 1=on)
+- `led_clear()` - Clear all LEDs
+- `led_set_row(row, pattern)` - Set row with bit pattern
+- `led_set_col(col, pattern)` - Set column with bit pattern
+- `led_get(row, col)` - Get LED state (returns 0/1)
+- `delay_ms(milliseconds)` - Hardware-synchronized delay
+
+Example usage:
+
+```smol
+init {
+    native led_matrix_init(8, 8);
+}
+
+main {
+    native led_set_color(0, 0, 255, 0, 0);  // Red LED at (0,0)
+    native delay_ms(1000);                   // 1-second delay
+    native led_clear();
+}
+```
+
+## Compilers
+
+Smollu has two compiler implementations targeting the same VM bytecode format:
+
+### C Compiler (Production Ready)
+
+The original C-based compiler provides stable, single-pass compilation.
+
+**Pipeline:** `Source → Lexer → Parser → Bytecode Generator → VM Bytecode`
+
+**Status:** ✅ Fully functional and production-ready
+
+**Usage:**
+```bash
+./build/compiler/smollu_compiler input.smol -o output.smolbc
+```
+
+**Features:**
+- Complete language support (arithmetic, control flow, functions, native calls)
+- Automatic slot allocation for variables
+- Comprehensive test coverage
+- Direct bytecode emission (no intermediate representations)
+
+### MLIR Compiler (Experimental)
+
+Modern multi-stage compiler using LLVM's MLIR infrastructure for advanced optimizations.
+
+**Current Status:** 🚧 Phase 1 Complete - High-level Smol dialect implemented
+
+**Pipeline:**
+```
+Source → AST → Smol Dialect (high-level) → [Standard Dialects] → [SmolluASM] → Bytecode
+```
+
+**Working Now:**
+```bash
+# Generate AST
+./build/compiler_mlir/smollu-mlir-compiler input.smol --emit-ast
+
+# Generate high-level Smol MLIR
+./build/compiler_mlir/smollu-mlir-compiler input.smol --emit-smol --target=rs-emulator
+
+# Visualize AST
+cd compiler_mlir/tools && python ast_visualizer.py demo.ast --format both
+```
+
+**Target System:**
+
+Native calls are resolved at compile-time using YAML target definitions:
+- `demo` - Basic target with `print` and `rand` (device_id: 0x00)
+- `rs-emulator` - LED matrix support (device_id: 0x01, 9 native functions)
+
+See `compiler_mlir/targets/README.md` for adding new targets.
+
+**Roadmap:**
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1. High-Level Dialect | ✅ Complete | Smol dialect with language semantics |
+| 2. Low-Level Dialect | ⏸️ TODO | SmolluASM dialect (1:1 VM instructions) |
+| 3. Lowering Passes | ⏸️ TODO | Multi-stage lowering with verifiers |
+| 4. Generator Update | ⏸️ TODO | Verify pipeline compatibility |
+| 5. Code Generation | ⏸️ TODO | Re-enable bytecode emission |
+| 6. Build System | ⏸️ TODO | Integrate new dialects |
+| 7. Compiler Driver | ⏸️ TODO | Full compilation pipeline |
+
+**Next Steps:**
+- Create SmolluASM dialect for VM instructions
+- Implement lowering passes (Smol → Standard → SmolluASM)
+- Re-enable bytecode generation
+
 ## Testing
 
 The project includes comprehensive test coverage with 7 test suites:
@@ -126,79 +221,75 @@ The project includes comprehensive test coverage with 7 test suites:
 - `emulator_simple_test` - Basic functionality validation
 
 Run all tests:
+
 ```bash
 ctest --test-dir build --verbose
 ```
 
-## LED Matrix Native Functions
-
-The emulator provides comprehensive LED matrix control through native functions:
-
-```smol
-init {
-    native led_matrix_init(8, 8);          // Initialize 8x8 LED matrix
-}
-
-main {
-    // Set individual LED colors (row, col, red, green, blue)
-    native led_set_color(0, 0, 255, 0, 0);  // Red LED at (0,0)
-    native led_set_color(0, 1, 0, 255, 0);  // Green LED at (0,1)
-    native led_set_color(0, 2, 0, 0, 255);  // Blue LED at (0,2)
-
-    native delay_ms(1000);                  // Synchronized 1-second delay
-
-    native led_clear();                     // Clear all LEDs
-
-    // Set row/column patterns with bit masks
-    native led_set_row(0, 0b10101010);      // Alternating pattern on row 0
-    native led_set_col(0, 0b11110000);      // Top half pattern on col 0
-
-    // Query LED state
-    local state = native led_get(0, 0);     // Returns 0 (off) or 1 (on)
-}
-```
-
-**Available Functions:**
-- `led_matrix_init(rows, cols)` - Initialize matrix (1-64 x 1-64)
-- `led_set_color(row, col, r, g, b)` - Set LED with RGB color (0-255)
-- `led_set(row, col, state)` - Set LED on/off (0=off, 1=on)
-- `led_clear()` - Clear all LEDs
-- `led_set_row(row, pattern)` - Set row with bit pattern
-- `led_set_col(col, pattern)` - Set column with bit pattern
-- `led_get(row, col)` - Get LED state (returns 0/1)
-- `delay_ms(milliseconds)` - Hardware-synchronized delay
-
 ## Documentation
 
-- [x] Language Spec (`doc/Language Spec.md`)
-- [x] Instruction Set (`doc/Instruction Set.md`)
-- [x] Bytecode format (`doc/ByteCode format.md`)
+- Language Specification: `doc/Language Spec.md`
+- VM Instruction Set: `doc/Instruction Set.md`
+- Bytecode File Format: `doc/ByteCode format.md`
 
 ## Project Structure
 
 ```
 smollu/
-├── cmake/              # CMake modules and configuration
-│   ├── emulator.cmake  # Rust integration module
-│   ├── tests.cmake     # Unified test registration
-│   └── ...            # Component-specific modules
-├── vm/                 # Virtual Machine (C)
-│   ├── smollu_vm.c     # VM implementation
-│   ├── smollu_vm.h     # VM public API
-│   └── test/           # VM test suite
-├── compiler/           # Compiler toolchain (C)
-│   ├── smollu_lexer.c      # Lexical analyzer
-│   ├── smollu_parser.c     # Syntax parser
-│   ├── smollu_bytecode_codegen.c  # Code generator
-│   ├── smollu_compiler.c   # Main compiler executable
-│   └── test/               # Compiler test suites
-├── emulator/           # Rust emulator with FFI integration
-│   ├── src/            # Rust source code
-│   ├── examples/       # Integration tests
-│   └── c_integration/  # C wrapper API
-├── demo/               # Example programs
-│   ├── Simple demo/    # Basic demo with .smol source
-│   └── LED matrix demo/  # LED matrix hardware simulation demos
-├── doc/                # Language and system documentation
-└── CMakePresets.json   # Build presets configuration
+├── cmake/                          # Build system modules
+│   ├── compiler.cmake
+│   ├── compiler_mlir.cmake
+│   ├── emulator.cmake
+│   ├── tests.cmake
+│   ├── vm.cmake
+│   └── demo.cmake
+│
+├── vm/                             # Virtual Machine (C)
+│   ├── smollu_vm.c
+│   ├── smollu_vm.h
+│   └── test/
+│
+├── compiler/                       # C Compiler (Production)
+│   ├── smollu_lexer.c
+│   ├── smollu_parser.c
+│   ├── smollu_bytecode_codegen.c
+│   ├── smollu_compiler.c
+│   ├── smollu_native_tables.h
+│   └── test/
+│
+├── compiler_mlir/                  # MLIR Compiler (Experimental)
+│   ├── include/Smollu/             # Headers & TableGen definitions
+│   │   ├── SmolDialect.{h,td}
+│   │   ├── SmolOps.{h,td}
+│   │   ├── Passes.h
+│   │   └── ...
+│   ├── lib/
+│   │   ├── Lexer/
+│   │   ├── Parser/
+│   │   ├── Dialect/
+│   │   ├── Pass/                   # Optimization passes
+│   │   ├── Target/                 # Native function registry
+│   │   └── CodeGen/                # ⏸️ Bytecode emitter (disabled)
+│   ├── src/
+│   │   └── smollu-mlir-compiler.cpp
+│   ├── targets/                    # Target platform definitions (YAML)
+│   └── tools/                      # AST visualization tools
+│
+├── emulator/                       # Rust Emulator + LED Matrix GUI
+│   ├── src/
+│   ├── examples/
+│   └── c_integration/
+│
+├── demo/
+│   ├── Simple demo/
+│   └── LED matrix demo/
+│
+├── doc/
+│   ├── Language Spec.md
+│   ├── Instruction Set.md
+│   └── ByteCode format.md
+│
+├── CLAUDE.md                       # Project instructions for Claude Code
+├── CMakeLists.txt
+└── CMakePresets.json
 ```
