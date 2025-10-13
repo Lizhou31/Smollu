@@ -1,0 +1,13 @@
+name: rs-emulator
+device_id: 0x01
+natives:
+  - print
+  - led_matrix_init
+  - led_set
+  - led_set_color
+  - led_clear
+  - led_set_row
+  - led_set_col
+  - led_get
+  - delay_ms
+

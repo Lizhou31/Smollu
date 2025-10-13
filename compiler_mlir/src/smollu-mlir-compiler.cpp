@@ -13,6 +13,7 @@
 #include "Smollu/SmolluParser.h"
 #include "Smollu/SmolluASMEmitter.h"
 #include "Smollu/Passes.h"
+#include "Smollu/NativeRegistry.h"
 #include "llvm/Support/raw_ostream.h"
 
 #include <iostream>
@@ -41,12 +42,13 @@ void printUsage(const char *progName) {
     std::cout << "Usage: " << progName << " <input.smol> [options]\n";
     std::cout << "\n";
     std::cout << "Options:\n";
-    std::cout << "  -o <file>      Output bytecode file\n";
-    std::cout << "  --emit-ast     Emit AST only (no bytecode generation)\n";
-    std::cout << "  --emit-smol    Emit high-level Smol dialect MLIR to .smol.mlir file\n";
-    std::cout << "  --emit-mlir    Emit MLIR representation to .mlir file\n";
-    std::cout << "  --emit-asm     Emit assembly representation to .smolasm file\n";
-    std::cout << "  -h, --help     Show this help message\n";
+    std::cout << "  -o <file>        Output bytecode file\n";
+    std::cout << "  --target=<name>  Target platform (e.g., demo, rs-emulator)\n";
+    std::cout << "  --emit-ast       Emit AST only (no bytecode generation)\n";
+    std::cout << "  --emit-smol      Emit high-level Smol dialect MLIR to .smol.mlir file\n";
+    std::cout << "  --emit-mlir      Emit MLIR representation to .mlir file\n";
+    std::cout << "  --emit-asm       Emit assembly representation to .smolasm file\n";
+    std::cout << "  -h, --help       Show this help message\n";
 }
 
 // Run the promotion pass to insert type casts for mixed arithmetic
@@ -88,6 +90,19 @@ bool runDeadCodeEliminationPass(mlir::ModuleOp module) {
     return true;
 }
 
+// Run resolve native calls pass to annotate native calls with indices
+bool runResolveNativeCallsPass(mlir::ModuleOp module) {
+    mlir::PassManager pm(module.getContext());
+    pm.addPass(mlir::smol::createResolveNativeCallsPass());
+
+    if (mlir::failed(pm.run(module))) {
+        std::cerr << "Error: Native call resolution failed\n";
+        return false;
+    }
+
+    return true;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         printUsage(argv[0]);
@@ -96,6 +111,7 @@ int main(int argc, char **argv) {
 
     std::string inputFile;
     std::string outputFile;
+    std::string targetName;
     bool emitASTOnly = false;
     bool emitSmol = false;
     bool emitMLIR = false;
@@ -115,6 +131,8 @@ int main(int argc, char **argv) {
                 std::cerr << "Error: -o requires an argument\n";
                 return 1;
             }
+        } else if (arg.find("--target=") == 0) {
+            targetName = arg.substr(9); // Extract after "--target="
         } else if (arg == "--emit-ast") {
             emitASTOnly = true;
         } else if (arg == "--emit-smol") {
@@ -159,6 +177,21 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    // Load target table if specified
+    mlir::smol::NativeTable targetTable;
+    if (!targetName.empty()) {
+        targetTable = mlir::smol::loadTargetTable(targetName);
+        if (targetTable.name.empty()) {
+            std::cerr << "Error: Failed to load target '" << targetName << "'\n";
+            return 1;
+        }
+        std::cout << "Loaded target: " << targetTable.name;
+        if (targetTable.deviceId.has_value()) {
+            std::cout << " (device_id: 0x" << std::hex << (int)targetTable.deviceId.value() << std::dec << ")";
+        }
+        std::cout << " with " << targetTable.natives.size() << " native functions\n";
+    }
+
     if (emitSmol) {
         // High-level Smol dialect mode
         MLIRContext context;
@@ -170,6 +203,16 @@ int main(int argc, char **argv) {
         if (!module) {
             std::cerr << "Error: Failed to parse source file\n";
             return 1;
+        }
+
+        // Set target attributes if target is specified
+        if (!targetName.empty()) {
+            module->setAttr("smol.target", mlir::StringAttr::get(&context, targetName));
+            if (targetTable.deviceId.has_value()) {
+                module->setAttr("smol.device_id",
+                    mlir::IntegerAttr::get(mlir::IntegerType::get(&context, 8),
+                                          targetTable.deviceId.value()));
+            }
         }
 
         // Run type promotion pass
@@ -185,6 +228,13 @@ int main(int argc, char **argv) {
         // Run dead code elimination pass
         if (!runDeadCodeEliminationPass(module)) {
             return 1;
+        }
+
+        // Resolve native calls if target is specified
+        if (!targetName.empty()) {
+            if (!runResolveNativeCallsPass(module)) {
+                return 1;
+            }
         }
 
         // Generate output file name
@@ -231,9 +281,26 @@ int main(int argc, char **argv) {
     }
     std::cout << "Module parsed successfully\n";
 
+    // Set target attributes if target is specified
+    if (!targetName.empty()) {
+        module->setAttr("smol.target", mlir::StringAttr::get(&context, targetName));
+        if (targetTable.deviceId.has_value()) {
+            module->setAttr("smol.device_id",
+                mlir::IntegerAttr::get(mlir::IntegerType::get(&context, 8),
+                                      targetTable.deviceId.value()));
+        }
+    }
+
     // Run type promotion pass
     if (!runPromotionPass(module)) {
         return 1;
+    }
+
+    // Resolve native calls if target is specified (for all modes)
+    if (!targetName.empty()) {
+        if (!runResolveNativeCallsPass(module)) {
+            return 1;
+        }
     }
 
     if (emitMLIR) {

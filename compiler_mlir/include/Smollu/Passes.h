@@ -25,6 +25,10 @@ std::unique_ptr<Pass> createScopeVerificationPass();
 /// Removes unused variable stores and pure operations with no uses.
 std::unique_ptr<Pass> createDeadCodeEliminationPass();
 
+/// Create a pass that resolves native function calls to target-specific indices.
+/// Annotates smol.native_call operations with smol.native_index attribute.
+std::unique_ptr<Pass> createResolveNativeCallsPass();
+
 /// Register all Smollu passes
 void registerSmolPasses();
 

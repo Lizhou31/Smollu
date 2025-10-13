@@ -87,14 +87,27 @@ target_link_libraries(SmolluParser
     MLIRFuncDialect
 )
 
+# Target library for native registry
+add_library(SmolTarget
+    lib/Target/NativeRegistry.cpp
+)
+target_link_libraries(SmolTarget
+    LLVMSupport
+)
+target_include_directories(SmolTarget PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 # Pass library for transformations
 add_library(SmolPasses
     lib/Pass/PromoteNumerics.cpp
     lib/Pass/ScopeVerification.cpp
     lib/Pass/DeadCodeElimination.cpp
+    lib/Pass/ResolveNativeCalls.cpp
 )
 target_link_libraries(SmolPasses
     SmolDialect
+    SmolTarget
     MLIRIR
     MLIRPass
     MLIRSupport
@@ -122,6 +135,7 @@ target_link_libraries(smollu-mlir-compiler
     SmolluCodeGen
     SmolDialect
     SmolPasses
+    SmolTarget
     MLIRDialect
     MLIRIR
     MLIRParser
@@ -129,4 +143,10 @@ target_link_libraries(smollu-mlir-compiler
     MLIRFuncDialect
     MLIRTransforms
     LLVMSupport
+)
+
+# Install targets directory
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/targets
+    DESTINATION share/smollu
+    FILES_MATCHING PATTERN "*.yaml"
 )
