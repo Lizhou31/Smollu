@@ -107,18 +107,33 @@ struct ScopeVerificationPass : public PassWrapper<ScopeVerificationPass,
               hasError = true;
             }
           } else if (existsInGlobal) {
-            // For global variables, check dominance within the current function
-            bool dominated = false;
+            // For global variables, check that at least one definition is accessible
+            // Two cases:
+            // 1. Same function: Use dominance check
+            // 2. Different function: Must be in init (init runs before main/other functions)
+            bool hasValidDef = false;
             for (Operation *defOp : globalIt->second) {
-              // Only check definitions in the same function
-              Operation *defFunc = defOp->getParentOfType<mlir::func::FuncOp>();
-              if (defFunc == parentFunc && domInfo.dominates(defOp, op)) {
-                dominated = true;
+              Operation *defParentFunc = defOp->getParentOfType<mlir::func::FuncOp>();
+              std::string defFuncName = defParentFunc ?
+                cast<mlir::func::FuncOp>(defParentFunc).getName().str() : "";
+
+              // Same function: check dominance
+              if (defFuncName == currentFunc) {
+                if (domInfo.dominates(defOp, op)) {
+                  hasValidDef = true;
+                  break;
+                }
+              }
+              // Different function: only __init can initialize globals for other functions
+              else if (defFuncName == "__init") {
+                hasValidDef = true;
                 break;
               }
             }
-            if (!dominated) {
-              op->emitError("variable '") << varName << "' used before declaration";
+
+            if (!hasValidDef) {
+              op->emitError("global variable '") << varName
+                << "' used before initialization (must be initialized in init or before use in current function)";
               hasError = true;
             }
           }
