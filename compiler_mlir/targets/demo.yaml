@@ -1,0 +1,6 @@
+name: demo
+device_id: 0x00
+natives:
+  - print
+  - rand
+

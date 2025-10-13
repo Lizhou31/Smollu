@@ -18,6 +18,7 @@ include(compiler)
 include(emulator)
 include(tests)
 include(demo)
+include(compiler_mlir)
 
 # ---------------------------------------------------------------------------
 #  Usage
