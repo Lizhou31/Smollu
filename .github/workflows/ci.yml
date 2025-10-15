@@ -17,9 +17,20 @@ jobs:
         preset: [debug, release]
         include:
           - os: ubuntu-latest
-            install-deps: sudo apt-get update && sudo apt-get install -y libcriterion-dev cmake pkg-config build-essential libgtk-3-dev llvm-dev libmlir-15-dev clang
+            install-deps: sudo apt-get update && sudo apt-get install -y libcriterion-dev cmake pkg-config build-essential libgtk-3-dev ninja-build clang
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache LLVM Build
+      uses: actions/cache@v3
+      with:
+        path: build/llvm-build
+        key: ${{ runner.os }}-llvm-${{ hashFiles('external/llvm-project/.git/modules/llvm-project/HEAD') }}-${{ matrix.preset }}
+        restore-keys: |
+          ${{ runner.os }}-llvm-${{ hashFiles('external/llvm-project/.git/modules/llvm-project/HEAD') }}-
+          ${{ runner.os }}-llvm-
 
     - name: Install Dependencies
       run: ${{ matrix.install-deps }}
