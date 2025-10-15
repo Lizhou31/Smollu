@@ -5,15 +5,23 @@ cmake_minimum_required(VERSION 3.15)
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-# Match MLIR compilation flags (disable RTTI to match LLVM/MLIR)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+# RTTI is enabled to match LLVM/MLIR build from submodule
+# (removed -fno-rtti flag)
 
-# Find LLVM and MLIR
-find_package(LLVM REQUIRED CONFIG)
-find_package(MLIR REQUIRED CONFIG)
-
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Found MLIR ${MLIR_PACKAGE_VERSION}")
+# Find LLVM and MLIR (only needed for system installations, not submodule)
+if(NOT SMOLLU_USE_LLVM_SUBMODULE)
+    find_package(LLVM REQUIRED CONFIG)
+    find_package(MLIR REQUIRED CONFIG)
+    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+    message(STATUS "Found MLIR ${MLIR_PACKAGE_VERSION}")
+else()
+    message(STATUS "Using LLVM/MLIR from submodule")
+    # When using submodule, manually set up the paths to CMake modules
+    set(LLVM_CMAKE_DIR "${CMAKE_SOURCE_DIR}/external/llvm-project/llvm/cmake/modules")
+    set(MLIR_CMAKE_DIR "${CMAKE_SOURCE_DIR}/external/llvm-project/mlir/cmake/modules")
+    set(LLVM_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/external/llvm-project/llvm/include;${CMAKE_BINARY_DIR}/llvm-build/include")
+    set(MLIR_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/external/llvm-project/mlir/include;${CMAKE_BINARY_DIR}/llvm-build/tools/mlir/include")
+endif()
 
 # Set up LLVM/MLIR paths
 set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/bin)
