@@ -26,9 +26,69 @@ static inline Value peek(SmolluVM *vm, uint8_t distance) {
     return vm->stack[vm->sp - 1 - distance];
 }
 
-static inline uint8_t read_u8(SmolluVM *vm) {
+#ifdef CONFIG_SMOLLU_STREAMING
+/**
+ * @brief Reload cache with bytecode from streaming source
+ */
+static int reload_cache(SmolluVM *vm, uint32_t pc) {
+    if (!vm->read_region || !vm->stream_ctx) {
+        fprintf(stderr, "Stream not configured\n");
+        return -1;
+    }
+
+    /* Calculate offset in source (code starts at code_offset) */
+    uint32_t source_offset = vm->code_offset + pc;
+
+    /* Calculate how many bytes to read (don't exceed code size) */
+    uint32_t remaining = vm->bc_len - pc;
+    uint16_t read_size = (remaining < SMOLLU_STREAM_CACHE_SIZE) ?
+                         remaining : SMOLLU_STREAM_CACHE_SIZE;
+
+    if (read_size == 0) {
+        fprintf(stderr, "Cache reload: no data to read at pc=%u\n", pc);
+        return -1;
+    }
+
+    /* Read from source */
+    int ret = vm->read_region(vm->stream_ctx, source_offset, vm->cache, read_size);
+    if (ret != 0) {
+        fprintf(stderr, "Cache reload failed at offset %u: %d\n", source_offset, ret);
+        return ret;
+    }
+
+    /* Update cache metadata */
+    vm->cache_start = pc;
+    vm->cache_len = read_size;
+
+    return 0;
+}
+#endif /* CONFIG_SMOLLU_STREAMING */
+
+/**
+ * @brief Fetch byte from bytecode (streaming or in-RAM)
+ */
+static inline uint8_t fetch_u8(SmolluVM *vm) {
+#ifdef CONFIG_SMOLLU_STREAMING
+    /* Streaming mode: bytecode pointer is NULL */
+    if (vm->bytecode == NULL) {
+        /* Check if PC is within cached region */
+        if (vm->pc < vm->cache_start || vm->pc >= vm->cache_start + vm->cache_len) {
+            if (reload_cache(vm, vm->pc) != 0) {
+                fprintf(stderr, "Fatal: cache reload failed at pc=%zu\n", vm->pc);
+                return 0xFF;  /* Return illegal opcode on error */
+            }
+        }
+        return vm->cache[vm->pc++ - vm->cache_start];
+    }
+#endif
+
+    /* Legacy in-RAM mode */
     assert(vm->pc < vm->bc_len);
     return vm->bytecode[vm->pc++];
+}
+
+static inline uint8_t read_u8(SmolluVM *vm) {
+    return fetch_u8(vm);
 }
 
 static inline int8_t read_i8(SmolluVM *vm) {
@@ -210,6 +270,86 @@ void smollu_vm_register_native(SmolluVM *vm, uint8_t nat_id, NativeFn fn) {
 void smollu_vm_destroy(SmolluVM *vm) {
     (void)vm; /* nothing for now */
 }
+
+#ifdef CONFIG_SMOLLU_STREAMING
+/**
+ * @brief Prepare VM for streaming execution from external source
+ */
+int smollu_vm_prepare_streaming(SmolluVM *vm,
+                                int (*read_region)(void *ctx, uint32_t offset, uint8_t *dst, size_t len),
+                                void *ctx,
+                                const NativeFn *native_table)
+{
+    if (!vm || !read_region || !ctx) {
+        fprintf(stderr, "Invalid parameters for streaming\n");
+        return -1;
+    }
+
+    /* Temporarily set up read_region for header/native table reading */
+    vm->stream_ctx = ctx;
+    vm->read_region = read_region;
+
+    /* Read 16-byte header */
+    uint8_t header[16];
+    if (read_region(ctx, 0, header, 16) != 0) {
+        fprintf(stderr, "Failed to read bytecode header\n");
+        return -1;
+    }
+
+    /* Parse header */
+    smollu_vm_read_header(vm, header);
+
+    /* Validate magic number */
+    if (vm->magic != 0x4C4F4D53) {  /* "SMOL" in little-endian */
+        fprintf(stderr, "Invalid bytecode magic: 0x%08X\n", vm->magic);
+        return -1;
+    }
+
+    /* Read native function table if present */
+    if (vm->native_count > 0) {
+        if (!native_table) {
+            fprintf(stderr, "Native functions required but table not provided\n");
+            return -1;
+        }
+
+        /* Read native table (2 bytes per entry) */
+        uint8_t native_buf[512];  /* Max 256 entries * 2 bytes */
+        size_t native_size = vm->native_count * 2;
+
+        if (native_size > sizeof(native_buf)) {
+            fprintf(stderr, "Native table too large: %zu bytes\n", native_size);
+            return -1;
+        }
+
+        if (read_region(ctx, 16, native_buf, native_size) != 0) {
+            fprintf(stderr, "Failed to read native function table\n");
+            return -1;
+        }
+
+        /* Map native functions */
+        smollu_vm_read_native_table(vm, native_buf, native_table);
+    }
+
+    /* Calculate code offset: header (16) + native table (native_count * 2) */
+    vm->code_offset = 16 + (vm->native_count * 2);
+
+    /* Setup streaming mode */
+    vm->bytecode = NULL;           /* NULL indicates streaming mode */
+    vm->bc_len = vm->code_size;    /* Total code size from header */
+    vm->pc = 0;
+    vm->sp = 0;
+    vm->fp = 0;
+
+    /* Initialize cache as empty */
+    vm->cache_start = 0;
+    vm->cache_len = 0;
+
+    printf("[VM] Streaming mode initialized: code_size=%u, code_offset=%u, native_count=%u\n",
+           vm->code_size, vm->code_offset, vm->native_count);
+
+    return 0;
+}
+#endif
 
 /* Return value: 0 on success, non-zero on runtime error */
 int smollu_vm_run(SmolluVM *vm) {

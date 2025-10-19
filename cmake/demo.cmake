@@ -48,3 +48,20 @@ add_custom_target(copy_compiler_to_led_matrix_demo ALL
     COMMENT "Copying smollu_compiler to demo directory"
     DEPENDS smollu_compiler
 )
+
+# Compile demo.smol to demo.smolbc for testing
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/demo/Simple\ demo/demo.smolbc
+    COMMAND $<TARGET_FILE:smollu_compiler>
+            "${CMAKE_BINARY_DIR}/demo/Simple demo/demo.smol"
+            -o
+            "${CMAKE_BINARY_DIR}/demo/Simple demo/demo.smolbc"
+    DEPENDS smollu_compiler ${CMAKE_BINARY_DIR}/demo/Simple\ demo/demo.smol
+    COMMENT "Compiling demo.smol to demo.smolbc"
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+
+# Create a target that ensures demo bytecode is compiled
+add_custom_target(compile_demo_bytecode ALL
+    DEPENDS ${CMAKE_BINARY_DIR}/demo/Simple\ demo/demo.smolbc
+)
