@@ -603,6 +603,56 @@ static void compile_block(Compiler *c, ASTNode *block, bool is_func_body) {
 }
 
 /* ──────────────────────────────────────────────────────────────────────────── */
+/*  Pre-scan to register global variables                                     */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+static void prescan_globals_in_stmt(Compiler *c, ASTNode *stmt);
+
+static void prescan_globals_in_block(Compiler *c, ASTNode *block) {
+    if (!block || block->type != AST_BLOCK) return;
+    ASTNode *stmt = block->as.block.stmts;
+    while (stmt) {
+        prescan_globals_in_stmt(c, stmt);
+        stmt = stmt->next;
+    }
+}
+
+static void prescan_globals_in_stmt(Compiler *c, ASTNode *stmt) {
+    if (!stmt) return;
+
+    switch (stmt->type) {
+        case AST_ASSIGNMENT:
+            if (!stmt->as.assign.is_local) {
+                /* Register global if not already present */
+                int idx = map_lookup(&c->globals, stmt->as.assign.name);
+                if (idx < 0) {
+                    map_insert(&c->globals, stmt->as.assign.name, (int)c->globals.count);
+                }
+            }
+            break;
+        case AST_WHILE:
+            prescan_globals_in_block(c, stmt->as.while_stmt.body);
+            break;
+        case AST_IF:
+            prescan_globals_in_block(c, stmt->as.if_stmt.then_body);
+            if (stmt->as.if_stmt.else_body) {
+                if (stmt->as.if_stmt.else_body->type == AST_BLOCK) {
+                    prescan_globals_in_block(c, stmt->as.if_stmt.else_body);
+                } else if (stmt->as.if_stmt.else_body->type == AST_IF) {
+                    prescan_globals_in_stmt(c, stmt->as.if_stmt.else_body);
+                }
+            }
+            break;
+        case AST_BLOCK:
+            prescan_globals_in_block(c, stmt);
+            break;
+        default:
+            /* Other statements don't introduce globals */
+            break;
+    }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────── */
 /*  Function definition                                                        */
 /* ──────────────────────────────────────────────────────────────────────────── */
 
@@ -693,12 +743,15 @@ int smollu_generate_bytecode(ASTNode        *root,
     /* Record where the code segment actually begins */
     size_t code_base = c.code.len; /* this will be address 0 for the VM */
     c.code_base = code_base;
-    
+
     /* Reserve a JMP (+offset int16) at address 0 (start of code) */
     size_t jmp_placeholder_offset = c.code.len; /* should equal code_base */
     bb_write_u8(&c.code, OP_JMP);
     size_t jmp_offset_field = bb_write_u16(&c.code, 0xFFFF);
 
+    /* ── Pre-scan init and main blocks to register all global variables */
+    prescan_globals_in_block(&c, root->as.program.init);
+    prescan_globals_in_block(&c, root->as.program.main);
 
     /* ── First compile all user functions so that their addresses are known */
     ASTNode *func_iter = root->as.program.functions->as.block.stmts;
